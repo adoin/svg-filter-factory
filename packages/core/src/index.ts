@@ -71,11 +71,24 @@ export interface ConvolveMatrixProps {
   edgeMode?: 'duplicate' | 'wrap' | 'none';
 }
 
+export interface ComponentTransferFuncProps {
+  type: 'identity' | 'table' | 'discrete' | 'linear' | 'gamma';
+  // table 和 discrete 使用
+  tableValues?: string;
+  // linear 使用
+  slope?: number;
+  intercept?: number;
+  // gamma 使用
+  amplitude?: number;
+  exponent?: number;
+  offset?: number;
+}
+
 export interface ComponentTransferProps {
-  funcR?: { type: 'identity' | 'table' | 'discrete' | 'linear' | 'gamma'; values?: string };
-  funcG?: { type: 'identity' | 'table' | 'discrete' | 'linear' | 'gamma'; values?: string };
-  funcB?: { type: 'identity' | 'table' | 'discrete' | 'linear' | 'gamma'; values?: string };
-  funcA?: { type: 'identity' | 'table' | 'discrete' | 'linear' | 'gamma'; values?: string };
+  funcR?: ComponentTransferFuncProps;
+  funcG?: ComponentTransferFuncProps;
+  funcB?: ComponentTransferFuncProps;
+  funcA?: ComponentTransferFuncProps;
 }
 
 export interface SpecularLightingProps {
@@ -257,11 +270,45 @@ function generateSubFilterElement(subFilter: SubFilter): string {
     
     case 'feComponentTransfer': {
       const p = props as ComponentTransferProps;
-      let content = `<feComponentTransfer${common}>`;
-      if (p.funcR) content += `<feFuncR type="${p.funcR.type}"${p.funcR.values ? ` values="${p.funcR.values}"` : ''} />`;
-      if (p.funcG) content += `<feFuncG type="${p.funcG.type}"${p.funcG.values ? ` values="${p.funcG.values}"` : ''} />`;
-      if (p.funcB) content += `<feFuncB type="${p.funcB.type}"${p.funcB.values ? ` values="${p.funcB.values}"` : ''} />`;
-      if (p.funcA) content += `<feFuncA type="${p.funcA.type}"${p.funcA.values ? ` values="${p.funcA.values}"` : ''} />`;
+      
+      // 辅助函数：生成 feFunc 元素
+      const generateFuncElement = (channel: string, func?: ComponentTransferFuncProps): string => {
+        if (!func) return '';
+        
+        let attrs = `type="${func.type}"`;
+        
+        switch (func.type) {
+          case 'identity':
+            // identity 不需要额外参数
+            break;
+          case 'table':
+          case 'discrete':
+            // table 和 discrete 使用 tableValues
+            if (func.tableValues) {
+              attrs += ` tableValues="${func.tableValues}"`;
+            }
+            break;
+          case 'linear':
+            // linear 使用 slope 和 intercept
+            attrs += ` slope="${func.slope ?? 1}"`;
+            attrs += ` intercept="${func.intercept ?? 0}"`;
+            break;
+          case 'gamma':
+            // gamma 使用 amplitude、exponent、offset
+            attrs += ` amplitude="${func.amplitude ?? 1}"`;
+            attrs += ` exponent="${func.exponent ?? 1}"`;
+            attrs += ` offset="${func.offset ?? 0}"`;
+            break;
+        }
+        
+        return `<feFunc${channel} ${attrs} />`;
+      };
+      
+      let content = `<feComponentTransfer ${defaultRegion} in="${defaultIn}"${result ? ` result="${result}"` : ''}>`;
+      content += generateFuncElement('R', p.funcR);
+      content += generateFuncElement('G', p.funcG);
+      content += generateFuncElement('B', p.funcB);
+      content += generateFuncElement('A', p.funcA);
       content += '</feComponentTransfer>';
       return content;
     }

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@svg-filter-factory/core": "workspace:*",
+    "element-plus": "^2.11.5",
     "highlight.js": "^11.11.1",
     "vue": "^3.4.0"
   },
