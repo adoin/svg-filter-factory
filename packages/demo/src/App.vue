@@ -132,11 +132,11 @@
                 
                 <div class="form-group">
                   <label>类型:</label>
-                  <select v-model="subFilter.type">
+                  <select v-model="subFilter.type" @change="onFilterTypeChange(index, subFilter.type)">
                     <option value="">选择类型...</option>
                     <option value="feGaussianBlur">高斯模糊 (feGaussianBlur)</option>
                     <option value="feDropShadow">投影 (feDropShadow)</option>
-                    <option value="feMorphology">形态学 (feMorphology)</option>
+                    <option value="feMorphology">变形 (feMorphology)</option>
                     <option value="feOffset">偏移 (feOffset)</option>
                     <option value="feColorMatrix">颜色矩阵 (feColorMatrix)</option>
                     <option value="feComponentTransfer">组件转换 (feComponentTransfer)</option>
@@ -155,21 +155,17 @@
                 </div>
                 
                 <div class="form-group">
-                  <label>输入源 (in):</label>
-                  <input v-model="subFilter.in" type="text" placeholder="例如: SourceGraphic, blur 等" />
-                </div>
-                
-                <div class="form-group">
-                  <label>输出名称 (result):</label>
-                  <input v-model="subFilter.result" type="text" placeholder="例如: blur, shadow 等" />
+                  <label>别名 (result):</label>
+                  <input v-model="subFilter.result" type="text" placeholder="用于后续混合引用，例如: blur" />
+                  <small class="field-desc">为此过滤器效果定义一个别名，可在后续过滤器中通过 in 引用</small>
                 </div>
                 
                 <!-- 动态属性编辑器 -->
                 <div v-if="subFilter.type" class="props-editor">
-                  <h4>属性配置:</h4>
                   <component 
                     :is="getPropsComponent(subFilter.type)" 
                     v-model="subFilter.props"
+                    :available-aliases="getAvailableAliases(index)"
                   />
                 </div>
               </div>
@@ -191,7 +187,7 @@
           
           <div class="builder-preview">
             <h3>预览代码:</h3>
-            <pre class="code-preview">{{ previewCode }}</pre>
+            <pre class="code-preview"><code class="language-javascript" v-html="highlightedCode"></code></pre>
           </div>
         </div>
       </section>
@@ -214,6 +210,9 @@
 
 <script setup lang="ts">
 import { ref, computed, defineComponent, h } from 'vue'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import 'highlight.js/styles/atom-one-dark.css'
 import {
   register,
   render,
@@ -234,6 +233,9 @@ import {
   type ConvolveMatrixProps,
   type DisplacementMapProps
 } from '@svg-filter-factory/core'
+
+// 注册 JavaScript 语言支持
+hljs.registerLanguage('javascript', javascript)
 
 // 状态管理
 const registeredFilters = ref<FilterDefinition[]>([])
@@ -336,19 +338,48 @@ const applyFilter = (filter: string) => {
   addLog(`应用过滤器: ${filterName}`, 'info')
 }
 
-// 动态表单 - 添加子过滤器
+// 动态表单 - 添加子过滤器（根据类型设置合理的默认值）
+const getDefaultSubFilter = (type: string = 'feGaussianBlur') => {
+  const defaults: Record<string, { props: any; result: string }> = {
+    feGaussianBlur: { props: { stdDeviation: '2,2' }, result: 'blur' },
+    feDropShadow: { props: { dx: 2, dy: 2, stdDeviation: '2,2', floodColor: '#000000', floodOpacity: 1 }, result: 'shadow' },
+    feFlood: { props: { floodColor: '#000000', floodOpacity: 1 }, result: 'flood' },
+    feOffset: { props: { dx: 0, dy: 0 }, result: 'offset' },
+    feColorMatrix: { props: { type: 'saturate', values: '1' }, result: 'colormatrix' },
+    feTurbulence: { props: { type: 'fractalNoise', baseFrequency: 0.05, numOctaves: 1 }, result: 'turbulence' },
+    feBlend: { props: { mode: 'normal', in: 'SourceGraphic', in2: 'SourceGraphic' }, result: 'blend' },
+    feComposite: { props: { operator: 'over', in: 'SourceGraphic', in2: 'SourceGraphic' }, result: 'composite' },
+    feMerge: { props: { inputs: ['SourceGraphic'] }, result: 'merge' },
+    feMorphology: { props: { operator: 'erode', radius: '0,0' }, result: 'morphology' },
+    feConvolveMatrix: { props: { order: 3, kernelMatrix: '1 0 0 0 1 0 0 0 1', bias: 0 }, result: 'convolve' },
+    feDisplacementMap: { props: { scale: 0, xChannelSelector: 'R', yChannelSelector: 'G' }, result: 'displace' }
+  }
+  
+  const config = defaults[type] || { props: {}, result: 'effect' }
+  return {
+    type,
+    props: config.props,
+    in: 'SourceGraphic',
+    result: config.result
+  }
+}
+
 const addSubFilter = () => {
-  newSubFilters.value.push({
-    type: 'feGaussianBlur',
-    props: {},
-    in: '',
-    result: ''
-  })
+  newSubFilters.value.push(getDefaultSubFilter('feGaussianBlur') as Partial<SubFilter>)
 }
 
 // 动态表单 - 删除子过滤器
 const removeSubFilter = (index: number) => {
   newSubFilters.value.splice(index, 1)
+}
+
+// 动态表单 - 类型改变时更新默认值（完全覆盖）
+const onFilterTypeChange = (index: number, type: any) => {
+  if (!type) return
+  const defaultConfig = getDefaultSubFilter(type)
+  
+  // 完全覆盖为新类型的默认配置
+  newSubFilters.value[index] = defaultConfig as Partial<SubFilter>
 }
 
 // 动态表单 - 创建过滤器
@@ -364,7 +395,7 @@ const createFilter = () => {
   }
   
   try {
-    const config: SubFilter[] = newSubFilters.value.map(sf => ({
+    const config: SubFilter[] = newSubFilters.value.map((sf: Partial<SubFilter>) => ({
       type: sf.type!,
       props: sf.props || {},
       in: sf.in || undefined,
@@ -397,21 +428,56 @@ const resetBuilder = () => {
   addLog('表单已重置', 'info')
 }
 
+// 获取当前子过滤器之前已定义的所有别名
+const getAvailableAliases = (currentIndex: number): string[] => {
+  const aliases = ['SourceGraphic', 'SourceAlpha', 'BackgroundImage', 'BackgroundAlpha', 'FillPaint', 'StrokePaint']
+  
+  // 添加当前索引之前的所有别名
+  for (let i = 0; i < currentIndex; i++) {
+    if (newSubFilters.value[i]?.result) {
+      aliases.push(newSubFilters.value[i].result as string)
+    }
+  }
+  
+  return aliases
+}
+
 // 预览代码
 const previewCode = computed(() => {
   if (!newFilterId.value || newSubFilters.value.length === 0) {
     return '// 请配置过滤器'
   }
   
-  const config = newSubFilters.value.map(sf => {
-    const obj: any = { type: sf.type }
-    if (sf.props && Object.keys(sf.props).length > 0) obj.props = sf.props
-    if (sf.in) obj.in = sf.in
-    if (sf.result) obj.result = sf.result
-    return obj
+  const configArray = newSubFilters.value.map((sf: Partial<SubFilter>) => {
+    const parts: string[] = []
+    
+    parts.push(`type: '${sf.type}'`)
+    
+    if (sf.props && Object.keys(sf.props).length > 0) {
+      const propsStr = JSON.stringify(sf.props, null, 2)
+        .split('\n')
+        .map((line, idx) => idx === 0 ? line : '        ' + line)
+        .join('\n')
+      parts.push(`props: ${propsStr}`)
+    }
+    
+    if (sf.in) {
+      parts.push(`in: '${sf.in}'`)
+    }
+    
+    if (sf.result) {
+      parts.push(`result: '${sf.result}'`)
+    }
+    
+    return `    {\n      ${parts.join(',\n      ')}\n    }`
   })
   
-  return `register({\n  id: '${newFilterId.value}',\n  config: ${JSON.stringify(config, null, 2).replace(/"([^"]+)":/g, '$1:')}\n})`
+  return `register({\n  id: '${newFilterId.value}',\n  config: [\n${configArray.join(',\n')}\n  ]\n})`
+})
+
+// 高亮后的代码
+const highlightedCode = computed(() => {
+  return hljs.highlight(previewCode.value, { language: 'javascript' }).value
 })
 
 // 动态属性编辑器组件
@@ -421,26 +487,45 @@ const getPropsComponent = (type: string) => {
       props: ['modelValue'],
       emits: ['update:modelValue'],
       setup(props, { emit }) {
-        const updateProp = (key: string, value: any) => {
-          emit('update:modelValue', { ...props.modelValue, [key]: value })
+        const stdDeviationX = props.modelValue?.stdDeviation?.split(',')[0] || '2'
+        const stdDeviationY = props.modelValue?.stdDeviation?.split(',')[1] || '2'
+        
+        const updateStdDeviation = (axis: 'x' | 'y', value: string) => {
+          const x = axis === 'x' ? value : (props.modelValue?.stdDeviation?.split(',')[0] || '2')
+          const y = axis === 'y' ? value : (props.modelValue?.stdDeviation?.split(',')[1] || '2')
+          emit('update:modelValue', { stdDeviation: `${x},${y}` })
         }
-        return () => h('div', { class: 'props-fields' }, [
-          h('label', 'stdDeviation:'),
-          h('input', {
-            type: 'number',
-            value: props.modelValue?.stdDeviation || 0,
-            onInput: (e: any) => updateProp('stdDeviation', parseFloat(e.target.value) || 0),
-            step: 0.1
-          }),
-          h('label', 'edgeMode:'),
-          h('select', {
-            value: props.modelValue?.edgeMode || 'duplicate',
-            onChange: (e: any) => updateProp('edgeMode', e.target.value)
-          }, [
-            h('option', { value: 'duplicate' }, 'duplicate'),
-            h('option', { value: 'wrap' }, 'wrap'),
-            h('option', { value: 'none' }, 'none')
-          ])
+        
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '偏差值'),
+          h('div', { class: 'horizontal-inputs' }, [
+            h('div', { class: 'input-with-label' }, [
+              h('label', '偏差值 X'),
+              h('input', {
+                type: 'number',
+                value: stdDeviationX,
+                style:'width: 50px;',
+                onInput: (e: any) => updateStdDeviation('x', e.target.value || '2'),
+                step: 0.1,
+                min: 0,
+                placeholder: '2'
+              })
+            ]),
+            h('div', { class: 'input-with-label' }, [
+              h('label', '偏差值 Y'),
+              h('input', {
+                type: 'number',
+                value: stdDeviationY,
+                style:'width: 50px;',
+                onInput: (e: any) => updateStdDeviation('y', e.target.value || '2'),
+                step: 0.1,
+                min: 0,
+                placeholder: '2'
+              })
+            ])
+          ]),
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '控制水平和垂直方向的模糊程度，值越大越模糊')
         ])
       }
     }),
@@ -448,29 +533,97 @@ const getPropsComponent = (type: string) => {
       props: ['modelValue'],
       emits: ['update:modelValue'],
       setup(props, { emit }) {
+        const stdDeviationX = props.modelValue?.stdDeviation?.toString().split(',')[0] || '2'
+        const stdDeviationY = props.modelValue?.stdDeviation?.toString().split(',')[1] || '2'
+        
         const updateProp = (key: string, value: any) => {
           emit('update:modelValue', { ...props.modelValue, [key]: value })
         }
-        return () => h('div', { class: 'props-fields' }, [
-          h('label', 'dx:'),
-          h('input', {
-            type: 'number',
-            value: props.modelValue?.dx || 0,
-            onInput: (e: any) => updateProp('dx', parseFloat(e.target.value) || 0)
-          }),
-          h('label', 'dy:'),
-          h('input', {
-            type: 'number',
-            value: props.modelValue?.dy || 0,
-            onInput: (e: any) => updateProp('dy', parseFloat(e.target.value) || 0)
-          }),
-          h('label', 'stdDeviation:'),
-          h('input', {
-            type: 'number',
-            value: props.modelValue?.stdDeviation || 0,
-            onInput: (e: any) => updateProp('stdDeviation', parseFloat(e.target.value) || 0),
-            step: 0.1
-          })
+        
+        const updateStdDeviation = (axis: 'x' | 'y', value: string) => {
+          const x = axis === 'x' ? value : (props.modelValue?.stdDeviation?.toString().split(',')[0] || '2')
+          const y = axis === 'y' ? value : (props.modelValue?.stdDeviation?.toString().split(',')[1] || '2')
+          updateProp('stdDeviation', `${x},${y}`)
+        }
+        
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '阴影参数'),
+          h('div', { style: 'display: flex; flex-direction: column; gap: 10px;' }, [
+            h('div', { class: 'horizontal-inputs' }, [
+              h('div', { class: 'input-with-label' }, [
+                h('label', '偏移 X'),
+                h('input', {
+                  type: 'number',
+                  value: props.modelValue?.dx || 2,
+                  style: 'width: 50px;',
+                  onInput: (e: any) => updateProp('dx', parseFloat(e.target.value) || 2),
+                  placeholder: '2'
+                })
+              ]),
+              h('div', { class: 'input-with-label' }, [
+                h('label', '偏移 Y'),
+                h('input', {
+                  type: 'number',
+                  value: props.modelValue?.dy || 2,
+                  style: 'width: 50px;',
+                  onInput: (e: any) => updateProp('dy', parseFloat(e.target.value) || 2),
+                  placeholder: '2'
+                })
+              ])
+            ]),
+            h('div', { class: 'horizontal-inputs' }, [
+              h('div', { class: 'input-with-label' }, [
+                h('label', '模糊偏差 X'),
+                h('input', {
+                  type: 'number',
+                  value: stdDeviationX,
+                  style: 'width: 50px;',
+                  onInput: (e: any) => updateStdDeviation('x', e.target.value || '2'),
+                  step: 0.1,
+                  min: 0,
+                  placeholder: '2'
+                })
+              ]),
+              h('div', { class: 'input-with-label' }, [
+                h('label', '模糊偏差 Y'),
+                h('input', {
+                  type: 'number',
+                  value: stdDeviationY,
+                  style: 'width: 50px;',
+                  onInput: (e: any) => updateStdDeviation('y', e.target.value || '2'),
+                  step: 0.1,
+                  min: 0,
+                  placeholder: '2'
+                })
+              ])
+            ]),
+            h('div', { class: 'horizontal-inputs' }, [
+              h('div', { class: 'input-with-label' }, [
+                h('label', '阴影颜色'),
+                h('input', {
+                  type: 'color',
+                  value: props.modelValue?.floodColor || '#000000',
+                  style: 'width: 60px; height: 34px; cursor: pointer;',
+                  onInput: (e: any) => updateProp('floodColor', e.target.value)
+                })
+              ]),
+              h('div', { class: 'input-with-label' }, [
+                h('label', '不透明度'),
+                h('input', {
+                  type: 'number',
+                  value: props.modelValue?.floodOpacity || 1,
+                  style: 'width: 50px;',
+                  onInput: (e: any) => updateProp('floodOpacity', parseFloat(e.target.value) || 1),
+                  min: 0,
+                  max: 1,
+                  step: 0.1,
+                  placeholder: '1'
+                })
+              ])
+            ])
+          ]),
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '设置阴影的偏移、模糊程度、颜色和透明度')
         ])
       }
     }),
@@ -481,22 +634,34 @@ const getPropsComponent = (type: string) => {
         const updateProp = (key: string, value: any) => {
           emit('update:modelValue', { ...props.modelValue, [key]: value })
         }
-        return () => h('div', { class: 'props-fields' }, [
-          h('label', 'floodColor:'),
-          h('input', {
-            type: 'color',
-            value: props.modelValue?.floodColor || '#000000',
-            onInput: (e: any) => updateProp('floodColor', e.target.value)
-          }),
-          h('label', 'floodOpacity:'),
-          h('input', {
-            type: 'number',
-            value: props.modelValue?.floodOpacity || 1,
-            onInput: (e: any) => updateProp('floodOpacity', parseFloat(e.target.value) || 1),
-            min: 0,
-            max: 1,
-            step: 0.1
-          })
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '填充参数'),
+          h('div', { class: 'horizontal-inputs' }, [
+            h('div', { class: 'input-with-label' }, [
+              h('label', '颜色'),
+              h('input', {
+                type: 'color',
+                value: props.modelValue?.floodColor || '#000000',
+                style: 'width: 60px; height: 34px; cursor: pointer;',
+                onInput: (e: any) => updateProp('floodColor', e.target.value)
+              })
+            ]),
+            h('div', { class: 'input-with-label' }, [
+              h('label', '不透明度'),
+              h('input', {
+                type: 'number',
+                value: props.modelValue?.floodOpacity || 1,
+                style: 'width: 50px;',
+                onInput: (e: any) => updateProp('floodOpacity', parseFloat(e.target.value) || 1),
+                min: 0,
+                max: 1,
+                step: 0.1,
+                placeholder: '1'
+              })
+            ])
+          ]),
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '用指定的颜色和不透明度填充整个区域')
         ])
       }
     }),
@@ -507,24 +672,134 @@ const getPropsComponent = (type: string) => {
         const updateProp = (key: string, value: any) => {
           emit('update:modelValue', { ...props.modelValue, [key]: value })
         }
-        return () => h('div', { class: 'props-fields' }, [
-          h('label', 'type:'),
-          h('select', {
-            value: props.modelValue?.type || 'matrix',
-            onChange: (e: any) => updateProp('type', e.target.value)
-          }, [
-            h('option', { value: 'matrix' }, 'matrix'),
-            h('option', { value: 'saturate' }, 'saturate'),
-            h('option', { value: 'hueRotate' }, 'hueRotate'),
-            h('option', { value: 'luminanceToAlpha' }, 'luminanceToAlpha')
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '颜色矩阵'),
+          h('div', { style: 'display: flex; flex-direction: column; gap: 10px;' }, [
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '类型'),
+              h('select', {
+                value: props.modelValue?.type || 'saturate',
+                onChange: (e: any) => updateProp('type', e.target.value),
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;'
+              }, [
+                h('option', { value: 'saturate' }, '饱和度 (saturate)'),
+                h('option', { value: 'hueRotate' }, '色相旋转 (hueRotate)'),
+                h('option', { value: 'luminanceToAlpha' }, '亮度转Alpha (luminanceToAlpha)'),
+                h('option', { value: 'matrix' }, '自定义矩阵 (matrix)')
+              ])
+            ]),
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '值'),
+              h('input', {
+                type: 'text',
+                value: props.modelValue?.values || '1',
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;',
+                onInput: (e: any) => updateProp('values', e.target.value),
+                placeholder: '饱和度: 0-1, 色相: 0-360'
+              })
+            ])
           ]),
-          h('label', 'values:'),
-          h('input', {
-            type: 'text',
-            value: props.modelValue?.values || '',
-            onInput: (e: any) => updateProp('values', e.target.value),
-            placeholder: '例如: 0.5 或 90'
-          })
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '调整图像颜色，饱和度 0=灰度 1=原色，色相 0-360度旋转')
+        ])
+      }
+    }),
+    feOffset: defineComponent({
+      props: ['modelValue'],
+      emits: ['update:modelValue'],
+      setup(props, { emit }) {
+        const updateProp = (key: string, value: any) => {
+          emit('update:modelValue', { ...props.modelValue, [key]: value })
+        }
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '偏移参数'),
+          h('div', { class: 'horizontal-inputs' }, [
+            h('div', { class: 'input-with-label' }, [
+              h('label', '偏移 X'),
+              h('input', {
+                type: 'number',
+                value: props.modelValue?.dx || 0,
+                style: 'width: 50px;',
+                onInput: (e: any) => updateProp('dx', parseFloat(e.target.value) || 0),
+                placeholder: '0'
+              })
+            ]),
+            h('div', { class: 'input-with-label' }, [
+              h('label', '偏移 Y'),
+              h('input', {
+                type: 'number',
+                value: props.modelValue?.dy || 0,
+                style: 'width: 50px;',
+                onInput: (e: any) => updateProp('dy', parseFloat(e.target.value) || 0),
+                placeholder: '0'
+              })
+            ])
+          ]),
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '将图像在水平和垂直方向上偏移指定距离')
+        ])
+      }
+    }),
+    feMorphology: defineComponent({
+      props: ['modelValue'],
+      emits: ['update:modelValue'],
+      setup(props, { emit }) {
+        const radiusX = props.modelValue?.radius?.toString().split(',')[0] || '0'
+        const radiusY = props.modelValue?.radius?.toString().split(',')[1] || '0'
+        
+        const updateProp = (key: string, value: any) => {
+          emit('update:modelValue', { ...props.modelValue, [key]: value })
+        }
+        
+        const updateRadius = (axis: 'x' | 'y', value: string) => {
+          const x = axis === 'x' ? value : (props.modelValue?.radius?.toString().split(',')[0] || '0')
+          const y = axis === 'y' ? value : (props.modelValue?.radius?.toString().split(',')[1] || '0')
+          updateProp('radius', `${x},${y}`)
+        }
+        
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '变形参数'),
+          h('div', { style: 'display: flex; flex-direction: column; gap: 10px;' }, [
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '操作类型'),
+              h('select', {
+                value: props.modelValue?.operator || 'erode',
+                onChange: (e: any) => updateProp('operator', e.target.value),
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;'
+              }, [
+                h('option', { value: 'erode' }, '腐蚀 (erode)'),
+                h('option', { value: 'dilate' }, '膨胀 (dilate)')
+              ])
+            ]),
+            h('div', { class: 'horizontal-inputs' }, [
+              h('div', { class: 'input-with-label' }, [
+                h('label', '变形半径 X'),
+                h('input', {
+                  type: 'number',
+                  value: radiusX,
+                  style: 'width: 50px;',
+                  onInput: (e: any) => updateRadius('x', e.target.value || '0'),
+                  min: 0,
+                  step: 0.1,
+                  placeholder: '0'
+                })
+              ]),
+              h('div', { class: 'input-with-label' }, [
+                h('label', '变形半径 Y'),
+                h('input', {
+                  type: 'number',
+                  value: radiusY,
+                  style: 'width: 50px;',
+                  onInput: (e: any) => updateRadius('y', e.target.value || '0'),
+                  min: 0,
+                  step: 0.1,
+                  placeholder: '0'
+                })
+              ])
+            ])
+          ]),
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '腐蚀使图像收缩变细，膨胀使图像扩张变粗，半径控制变形程度')
         ])
       }
     }),
@@ -535,28 +810,209 @@ const getPropsComponent = (type: string) => {
         const updateProp = (key: string, value: any) => {
           emit('update:modelValue', { ...props.modelValue, [key]: value })
         }
-        return () => h('div', { class: 'props-fields' }, [
-          h('label', 'type:'),
-          h('select', {
-            value: props.modelValue?.type || 'turbulence',
-            onChange: (e: any) => updateProp('type', e.target.value)
-          }, [
-            h('option', { value: 'turbulence' }, 'turbulence'),
-            h('option', { value: 'fractalNoise' }, 'fractalNoise')
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '湍流参数'),
+          h('div', { style: 'display: flex; flex-direction: column; gap: 10px;' }, [
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '类型'),
+              h('select', {
+                value: props.modelValue?.type || 'fractalNoise',
+                onChange: (e: any) => updateProp('type', e.target.value),
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;'
+              }, [
+                h('option', { value: 'turbulence' }, '湍流 (turbulence)'),
+                h('option', { value: 'fractalNoise' }, '分形噪声 (fractalNoise)')
+              ])
+            ]),
+            h('div', { class: 'horizontal-inputs' }, [
+              h('div', { class: 'input-with-label' }, [
+                h('label', '基础频率'),
+                h('input', {
+                  type: 'number',
+                  value: props.modelValue?.baseFrequency || 0.05,
+                  style: 'width: 60px;',
+                  onInput: (e: any) => updateProp('baseFrequency', parseFloat(e.target.value) || 0.05),
+                  step: 0.01,
+                  min: 0,
+                  placeholder: '0.05'
+                })
+              ]),
+              h('div', { class: 'input-with-label' }, [
+                h('label', '八度数'),
+                h('input', {
+                  type: 'number',
+                  value: props.modelValue?.numOctaves || 1,
+                  style: 'width: 50px;',
+                  onInput: (e: any) => updateProp('numOctaves', parseInt(e.target.value) || 1),
+                  min: 1,
+                  placeholder: '1'
+                })
+              ])
+            ])
           ]),
-          h('label', 'baseFrequency:'),
-          h('input', {
-            type: 'number',
-            value: props.modelValue?.baseFrequency || 0.05,
-            onInput: (e: any) => updateProp('baseFrequency', parseFloat(e.target.value) || 0.05),
-            step: 0.01
-          }),
-          h('label', 'numOctaves:'),
-          h('input', {
-            type: 'number',
-            value: props.modelValue?.numOctaves || 1,
-            onInput: (e: any) => updateProp('numOctaves', parseInt(e.target.value) || 1)
-          })
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '生成湍流或噪声纹理效果，频率越大纹理越密集')
+        ])
+      }
+    }),
+    feBlend: defineComponent({
+      props: ['modelValue', 'availableAliases'],
+      emits: ['update:modelValue'],
+      setup(props, { emit }) {
+        const updateProp = (key: string, value: any) => {
+          emit('update:modelValue', { ...props.modelValue, [key]: value })
+        }
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '混合参数'),
+          h('div', { style: 'display: flex; flex-direction: column; gap: 10px;' }, [
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '混合模式'),
+              h('select', {
+                value: props.modelValue?.mode || 'normal',
+                onChange: (e: any) => updateProp('mode', e.target.value),
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;'
+              }, [
+                h('option', { value: 'normal' }, '正常 (normal)'),
+                h('option', { value: 'multiply' }, '正片叠底 (multiply)'),
+                h('option', { value: 'screen' }, '滤色 (screen)'),
+                h('option', { value: 'darken' }, '变暗 (darken)'),
+                h('option', { value: 'lighten' }, '变亮 (lighten)'),
+                h('option', { value: 'overlay' }, '叠加 (overlay)'),
+                h('option', { value: 'color-dodge' }, '颜色减淡 (color-dodge)'),
+                h('option', { value: 'color-burn' }, '颜色加深 (color-burn)')
+              ])
+            ]),
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '输入1 (in)'),
+              h('select', {
+                value: props.modelValue?.in || 'SourceGraphic',
+                onChange: (e: any) => updateProp('in', e.target.value),
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;'
+              }, (props.availableAliases || ['SourceGraphic']).map((alias: string) => 
+                h('option', { value: alias }, alias)
+              ))
+            ]),
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '输入2 (in2)'),
+              h('select', {
+                value: props.modelValue?.in2 || 'SourceGraphic',
+                onChange: (e: any) => updateProp('in2', e.target.value),
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;'
+              }, (props.availableAliases || ['SourceGraphic']).map((alias: string) => 
+                h('option', { value: alias }, alias)
+              ))
+            ])
+          ]),
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '将两个输入源按指定模式进行混合')
+        ])
+      }
+    }),
+    feComposite: defineComponent({
+      props: ['modelValue', 'availableAliases'],
+      emits: ['update:modelValue'],
+      setup(props, { emit }) {
+        const updateProp = (key: string, value: any) => {
+          emit('update:modelValue', { ...props.modelValue, [key]: value })
+        }
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '合成参数'),
+          h('div', { style: 'display: flex; flex-direction: column; gap: 10px;' }, [
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '合成操作'),
+              h('select', {
+                value: props.modelValue?.operator || 'over',
+                onChange: (e: any) => updateProp('operator', e.target.value),
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;'
+              }, [
+                h('option', { value: 'over' }, '覆盖 (over)'),
+                h('option', { value: 'in' }, '保留in范围 (in)'),
+                h('option', { value: 'out' }, '保留out范围 (out)'),
+                h('option', { value: 'atop' }, '顶部叠加 (atop)'),
+                h('option', { value: 'xor' }, '异或 (xor)'),
+                h('option', { value: 'arithmetic' }, '算术 (arithmetic)')
+              ])
+            ]),
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '输入1 (in)'),
+              h('select', {
+                value: props.modelValue?.in || 'SourceGraphic',
+                onChange: (e: any) => updateProp('in', e.target.value),
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;'
+              }, (props.availableAliases || ['SourceGraphic']).map((alias: string) => 
+                h('option', { value: alias }, alias)
+              ))
+            ]),
+            h('div', { class: 'input-with-label', style: 'display: flex; align-items: center;' }, [
+              h('label', { style: 'min-width: 80px;' }, '输入2 (in2)'),
+              h('select', {
+                value: props.modelValue?.in2 || 'SourceGraphic',
+                onChange: (e: any) => updateProp('in2', e.target.value),
+                style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px;'
+              }, (props.availableAliases || ['SourceGraphic']).map((alias: string) => 
+                h('option', { value: alias }, alias)
+              ))
+            ])
+          ]),
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '使用Porter-Duff合成操作组合两个输入源')
+        ])
+      }
+    }),
+    feMerge: defineComponent({
+      props: ['modelValue', 'availableAliases'],
+      emits: ['update:modelValue'],
+      setup(props, { emit }) {
+        const inputs = props.modelValue?.inputs || ['SourceGraphic']
+        
+        const updateInputs = (newInputs: string[]) => {
+          emit('update:modelValue', { inputs: newInputs })
+        }
+        
+        const addInput = () => {
+          const newInputs = [...inputs, 'SourceGraphic']
+          updateInputs(newInputs)
+        }
+        
+        const removeInput = (index: number) => {
+          const newInputs = inputs.filter((_: any, i: number) => i !== index)
+          updateInputs(newInputs)
+        }
+        
+        const updateInput = (index: number, value: string) => {
+          const newInputs = [...inputs]
+          newInputs[index] = value
+          updateInputs(newInputs)
+        }
+        
+        return () => h('div', [
+          h('div', { class: 'prop-label' }, '合并输入源'),
+          h('div', { style: 'display: flex; flex-direction: column; gap: 8px;' }, [
+            ...inputs.map((input: string, index: number) => 
+              h('div', { key: index, style: 'display: flex; align-items: center; gap: 8px;' }, [
+                h('label', { style: 'min-width: 60px; font-size: 12px; color: #666;' }, `输入 ${index + 1}`),
+                h('select', {
+                  value: input,
+                  onChange: (e: any) => updateInput(index, e.target.value),
+                  style: 'flex: 1; padding: 6px 10px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px;'
+                }, (props.availableAliases || ['SourceGraphic']).map((alias: string) => 
+                  h('option', { value: alias }, alias)
+                )),
+                h('button', {
+                  onClick: () => removeInput(index),
+                  class: 'btn btn-danger btn-small',
+                  style: 'padding: 4px 8px; font-size: 11px;'
+                }, '删除')
+              ])
+            ),
+            h('button', {
+              onClick: addInput,
+              class: 'btn btn-secondary btn-small',
+              style: 'align-self: flex-start; padding: 6px 12px;'
+            }, '+ 添加输入源')
+          ]),
+          h('small', { class: 'field-desc', style: 'margin-top: 8px; display: block;' }, 
+            '按顺序合并多个输入源，后面的会覆盖在前面的上方')
         ])
       }
     }),
@@ -905,6 +1361,14 @@ init()
   font-size: 14px;
 }
 
+.field-desc {
+  display: block;
+  color: #666;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 .sub-filters {
   margin-top: 20px;
 }
@@ -929,15 +1393,63 @@ init()
 
 .props-editor {
   margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px dashed #ccc;
+  padding: 15px;
+  background: #fafbfc;
+  border-radius: 5px;
+  border: 1px solid #e8eaf6;
 }
 
-.props-editor h4 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  color: #666;
+.prop-label {
   font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.horizontal-inputs {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.input-with-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input-with-label label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+  min-width: 60px;
+  white-space: nowrap;
+}
+
+.input-with-label input {
+  width: 80px;
+  padding: 6px 10px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+
+.input-with-label input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.fixed-params-hint {
+  display: block;
+  margin-top: 10px;
+  padding: 8px;
+  background: #fff3cd;
+  border-left: 3px solid #ffc107;
+  color: #856404;
+  font-size: 11px;
+  border-radius: 3px;
+  line-height: 1.4;
 }
 
 .props-fields {
@@ -973,16 +1485,24 @@ init()
 }
 
 .code-preview {
-  background: #282c34;
-  color: #abb2bf;
-  padding: 20px;
-  border-radius: 5px;
-  overflow-x: auto;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
   max-height: 600px;
   overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.code-preview code {
+  display: block;
+  padding: 20px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  background: #282c34;
+  color: #abb2bf;
+  overflow-x: auto;
 }
 
 /* 日志样式 */

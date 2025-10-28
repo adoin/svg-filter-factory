@@ -140,7 +140,7 @@ render('glow')
 |------|------|
 | `feGaussianBlur` | 高斯模糊 |
 | `feDropShadow` | 投影 |
-| `feMorphology` | 形态学 |
+| `feMorphology` | 变形 |
 | `feOffset` | 偏移 |
 | `feColorMatrix` | 颜色矩阵 |
 | `feComponentTransfer` | 组件转换 |

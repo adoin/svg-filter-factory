@@ -29,27 +29,28 @@ export type FilterType =
 
 // Filter configuration interfaces for each type
 export interface GaussianBlurProps {
-  stdDeviation?: number;
+  stdDeviation?: number | string;  // 支持 "2,2" 格式
   edgeMode?: 'duplicate' | 'wrap' | 'none';
 }
 
 export interface DropShadowProps {
   dx?: number;
   dy?: number;
-  stdDeviation?: number;
+  stdDeviation?: number | string;  // 支持单个值或 "x,y" 格式
   floodColor?: string;
   floodOpacity?: number;
 }
 
 export interface MorphologyProps {
   operator?: 'erode' | 'dilate';
-  radius?: number;
+  radius?: number | string;  // 支持单个值或 "x,y" 格式
 }
 
 export interface DisplacementMapProps {
   scale?: number;
   xChannelSelector?: 'R' | 'G' | 'B' | 'A';
   yChannelSelector?: 'R' | 'G' | 'B' | 'A';
+  in2?: string;
 }
 
 export interface BlendProps {
@@ -206,43 +207,50 @@ function generateSubFilterElement(subFilter: SubFilter): string {
   if (inputSource) commonAttrs.push(`in="${inputSource}"`);
   const common = commonAttrs.length > 0 ? ' ' + commonAttrs.join(' ') : '';
   
+  // Default filter region attributes (used by most filters)
+  const defaultRegion = 'x="0%" y="0%" width="100%" height="100%"';
+  const defaultIn = inputSource || 'SourceGraphic';
+  
   switch (type) {
     case 'feGaussianBlur': {
       const p = props as GaussianBlurProps;
-      return `<feGaussianBlur stdDeviation="${p.stdDeviation || 0}" edgeMode="${p.edgeMode || 'duplicate'}"${common} />`;
+      const stdDev = p.stdDeviation || '2,2';
+      return `<feGaussianBlur ${defaultRegion} in="${defaultIn}" stdDeviation="${stdDev}" edgeMode="none"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feDropShadow': {
       const p = props as DropShadowProps;
-      return `<feDropShadow dx="${p.dx || 0}" dy="${p.dy || 0}" stdDeviation="${p.stdDeviation || 0}" flood-color="${p.floodColor || 'black'}" flood-opacity="${p.floodOpacity || 1}"${common} />`;
+      const stdDev = p.stdDeviation || '2,2';
+      return `<feDropShadow ${defaultRegion} in="${defaultIn}" dx="${p.dx || 2}" dy="${p.dy || 2}" stdDeviation="${stdDev}" flood-color="${p.floodColor || '#000000'}" flood-opacity="${p.floodOpacity || 1}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feMorphology': {
       const p = props as MorphologyProps;
-      return `<feMorphology operator="${p.operator || 'erode'}" radius="${p.radius || 0}"${common} />`;
+      const radius = p.radius || '0,0';
+      return `<feMorphology ${defaultRegion} in="${defaultIn}" operator="${p.operator || 'erode'}" radius="${radius}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feDisplacementMap': {
       const p = props as DisplacementMapProps;
-      return `<feDisplacementMap scale="${p.scale || 0}" xChannelSelector="${p.xChannelSelector || 'R'}" yChannelSelector="${p.yChannelSelector || 'R'}"${common} />`;
+      const in2 = p.in2 || 'SourceGraphic';
+      return `<feDisplacementMap ${defaultRegion} in="${defaultIn}" in2="${in2}" scale="${p.scale || 0}" xChannelSelector="${p.xChannelSelector || 'R'}" yChannelSelector="${p.yChannelSelector || 'R'}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feBlend': {
       const p = props as BlendProps;
-      let attrs = `mode="${p.mode || 'normal'}"`;
-      if (p.in) attrs += ` in="${p.in}"`;
-      if (p.in2) attrs += ` in2="${p.in2}"`;
-      return `<feBlend ${attrs}${common} />`;
+      const in1 = p.in || defaultIn;
+      const in2 = p.in2 || 'SourceGraphic';
+      return `<feBlend ${defaultRegion} mode="${p.mode || 'normal'}" in="${in1}" in2="${in2}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feColorMatrix': {
       const p = props as ColorMatrixProps;
-      return `<feColorMatrix type="${p.type || 'matrix'}" values="${p.values || '1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0'}"${common} />`;
+      return `<feColorMatrix ${defaultRegion} in="${defaultIn}" type="${p.type || 'saturate'}" values="${p.values || '1'}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feConvolveMatrix': {
       const p = props as ConvolveMatrixProps;
-      return `<feConvolveMatrix order="${p.order || 3}" kernelMatrix="${p.kernelMatrix || '1 0 0 0 1 0 0 0 1'}" bias="${p.bias || 0}" edgeMode="${p.edgeMode || 'duplicate'}"${common} />`;
+      return `<feConvolveMatrix ${defaultRegion} in="${defaultIn}" order="${p.order || 3}" kernelMatrix="${p.kernelMatrix || '1 0 0 0 1 0 0 0 1'}" bias="${p.bias || 0}" edgeMode="${p.edgeMode || 'duplicate'}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feComponentTransfer': {
@@ -268,49 +276,49 @@ function generateSubFilterElement(subFilter: SubFilter): string {
     
     case 'feFlood': {
       const p = props as FloodProps;
-      return `<feFlood flood-color="${p.floodColor || 'black'}" flood-opacity="${p.floodOpacity || 1}"${common} />`;
+      return `<feFlood ${defaultRegion} flood-color="${p.floodColor || '#000000'}" flood-opacity="${p.floodOpacity || 1}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feTurbulence': {
       const p = props as TurbulenceProps;
-      return `<feTurbulence type="${p.type || 'turbulence'}" baseFrequency="${p.baseFrequency || 0}" numOctaves="${p.numOctaves || 1}" seed="${p.seed || 0}" stitchTiles="${p.stitchTiles || 'noStitch'}"${common} />`;
+      return `<feTurbulence ${defaultRegion} type="${p.type || 'fractalNoise'}" baseFrequency="${p.baseFrequency || 0.05}" numOctaves="${p.numOctaves || 1}" seed="${p.seed || 0}" stitchTiles="${p.stitchTiles || 'noStitch'}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feImage': {
       const p = props as ImageProps;
-      return `<feImage href="${p.href || ''}" preserveAspectRatio="${p.preserveAspectRatio || 'xMidYMid meet'}"${common} />`;
+      return `<feImage ${defaultRegion} href="${p.href || ''}" preserveAspectRatio="${p.preserveAspectRatio || 'xMidYMid meet'}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feTile': {
       const p = props as TileProps;
-      let attrs = '';
-      if (p.in) attrs += ` in="${p.in}"`;
-      return `<feTile${attrs}${common} />`;
+      return `<feTile ${defaultRegion} in="${defaultIn}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feOffset': {
       const p = props as OffsetProps;
-      return `<feOffset dx="${p.dx || 0}" dy="${p.dy || 0}"${common} />`;
+      return `<feOffset ${defaultRegion} in="${defaultIn}" dx="${p.dx || 0}" dy="${p.dy || 0}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feComposite': {
       const p = props as CompositeProps;
-      let attrs = `operator="${p.operator || 'over'}"`;
-      if (p.in) attrs += ` in="${p.in}"`;
-      if (p.in2) attrs += ` in2="${p.in2}"`;
+      const in1 = p.in || defaultIn;
+      const in2 = p.in2 || 'SourceGraphic';
+      let attrs = `${defaultRegion} operator="${p.operator || 'over'}" in="${in1}" in2="${in2}"`;
       if (p.operator === 'arithmetic') {
         attrs += ` k1="${p.k1 || 0}" k2="${p.k2 || 0}" k3="${p.k3 || 0}" k4="${p.k4 || 0}"`;
       }
-      return `<feComposite ${attrs}${common} />`;
+      return `<feComposite ${attrs}${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feMerge': {
       const p = props as MergeProps;
-      let content = `<feMerge${common}>`;
-      if (p.inputs) {
+      let content = `<feMerge ${defaultRegion}${result ? ` result="${result}"` : ''}>`;
+      if (p.inputs && p.inputs.length > 0) {
         p.inputs.forEach(input => {
           content += `<feMergeNode in="${input}" />`;
         });
+      } else {
+        content += `<feMergeNode in="${defaultIn}" />`;
       }
       content += '</feMerge>';
       return content;

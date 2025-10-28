@@ -229,7 +229,7 @@ render('turbulence-effect')
 |------|------|----------|
 | `feGaussianBlur` | 高斯模糊 | `stdDeviation`, `edgeMode` |
 | `feDropShadow` | 投影 | `dx`, `dy`, `stdDeviation` |
-| `feMorphology` | 形态学 | `operator`, `radius` |
+| `feMorphology` | 变形 | `operator`, `radius` |
 | `feOffset` | 偏移 | `dx`, `dy` |
 | `feColorMatrix` | 颜色矩阵 | `type`, `values` |
 | `feComponentTransfer` | 组件转换 | `type`, `slope`, `intercept` |
