@@ -245,7 +245,9 @@ function generateSubFilterElement(subFilter: SubFilter): string {
     
     case 'feColorMatrix': {
       const p = props as ColorMatrixProps;
-      return `<feColorMatrix ${defaultRegion} in="${defaultIn}" type="${p.type || 'saturate'}" values="${p.values || '1'}"${result ? ` result="${result}"` : ''} />`;
+      // 将换行符替换为空格，用于matrix类型
+      const values = (p.values || '1').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      return `<feColorMatrix ${defaultRegion} in="${defaultIn}" type="${p.type || 'saturate'}" values="${values}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feConvolveMatrix': {
