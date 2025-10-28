@@ -1,64 +1,89 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
     <!-- Header -->
-    <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-8 px-6 shadow-lg">
-      <h1 class="text-4xl font-bold mb-2">SVG Filter Factory Demo</h1>
-      <p class="text-purple-100 text-lg">演示SVG过滤器的注册、渲染和动态创建 - 基于17种SVG过滤器类型</p>
+    <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 shadow-md">
+      <h1 class="text-2xl font-bold">SVG Filter Factory Demo</h1>
     </header>
 
     <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
-      <!-- 1. 快速示例区 -->
-      <section class="bg-white rounded-xl shadow-md p-6">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-500 pb-2">快速示例</h2>
-        <div class="space-y-4">
-          <div class="flex gap-3">
-            <el-button type="primary" @click="registerSampleFilters">
-              注册示例过滤器
-            </el-button>
-            <el-button type="danger" @click="clearAllFilters">
-              清除所有过滤器
-            </el-button>
-          </div>
-          
-          <div v-if="registeredFilters.length > 0" class="space-y-3">
-            <h3 class="text-xl font-semibold text-gray-700">已注册的过滤器：</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div 
-                v-for="filter in registeredFilters" 
-                :key="filter.id" 
-                class="border-2 border-purple-200 rounded-lg p-4 hover:shadow-lg transition-shadow bg-gradient-to-br from-purple-50 to-indigo-50"
-              >
-                <div class="flex justify-between items-center mb-3">
-                  <strong class="text-lg font-mono text-purple-700">{{ filter.id }}</strong>
-                  <span class="text-sm bg-purple-200 text-purple-800 px-2 py-1 rounded-full">
-                    {{ filter.config.length }} 个子过滤器
-                  </span>
-                </div>
-                <div class="space-y-2 mb-4">
-                  <div 
-                    v-for="(sub, idx) in filter.config" 
-                    :key="idx" 
-                    class="flex items-center gap-2 text-sm"
-                  >
-                    <span class="font-semibold text-gray-600">{{ idx + 1 }}.</span>
-                    <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">{{ sub.type }}</span>
-                    <span v-if="sub.result" class="text-green-600 text-xs">→ {{ sub.result }}</span>
-                    <span v-if="sub.in" class="text-gray-500 text-xs">(in: {{ sub.in }})</span>
+      <!-- 1. 快速示例区 + 操作日志 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 左侧：快速示例 -->
+        <section class="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
+          <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-500 pb-2">快速示例</h2>
+          <div class="space-y-4">
+            <div class="flex gap-3">
+              <el-button type="primary" @click="registerSampleFilters">
+                注册示例过滤器
+              </el-button>
+              <el-button type="danger" @click="clearAllFilters">
+                清除所有过滤器
+              </el-button>
+            </div>
+            
+            <div v-if="registeredFilters.length > 0" class="space-y-3">
+              <h3 class="text-xl font-semibold text-gray-700">已注册的过滤器：</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div 
+                  v-for="filter in registeredFilters" 
+                  :key="filter.id" 
+                  class="border-2 border-purple-200 rounded-lg p-4 hover:shadow-lg transition-shadow bg-gradient-to-br from-purple-50 to-indigo-50"
+                >
+                  <div class="flex justify-between items-center mb-3">
+                    <strong class="text-lg font-mono text-purple-700">{{ filter.id }}</strong>
+                    <span class="text-sm bg-purple-200 text-purple-800 px-2 py-1 rounded-full">
+                      {{ filter.config.length }} 个子过滤器
+                    </span>
                   </div>
-                </div>
-                <div class="flex gap-2">
-                  <el-button type="success" size="small" class="flex-1" @click="renderAndApplyFilter(filter.id)">
-                    渲染并应用
-                  </el-button>
-                  <el-button type="info" size="small" class="flex-1" @click="renderFilter(filter.id)">
-                    仅渲染
-                  </el-button>
+                  <div class="space-y-2 mb-4">
+                    <div 
+                      v-for="(sub, idx) in filter.config" 
+                      :key="idx" 
+                      class="flex items-center gap-2 text-sm"
+                    >
+                      <span class="font-semibold text-gray-600">{{ idx + 1 }}.</span>
+                      <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">{{ sub.type }}</span>
+                      <span v-if="sub.result" class="text-green-600 text-xs">→ {{ sub.result }}</span>
+                      <span v-if="sub.in" class="text-gray-500 text-xs">(in: {{ sub.in }})</span>
+                    </div>
+                  </div>
+                  <div class="flex gap-2">
+                    <el-button type="success" size="small" class="flex-1" @click="renderAndApplyFilter(filter.id)">
+                      渲染并应用
+                    </el-button>
+                    <el-button type="info" size="small" class="flex-1" @click="renderFilter(filter.id)">
+                      仅渲染
+                    </el-button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <!-- 右侧：操作日志 -->
+        <section class="bg-white rounded-xl shadow-md p-6 flex flex-col">
+          <div class="flex justify-between items-center mb-4 border-b-2 border-purple-500 pb-2">
+            <h2 class="text-2xl font-bold text-gray-800">操作日志</h2>
+            <el-button size="small" @click="logs = []">清空</el-button>
+          </div>
+          <div class="flex-1 overflow-y-auto max-h-[300px] space-y-1 bg-gray-50 rounded p-3 font-mono text-xs">
+            <div 
+              v-for="(log, index) in logs.reverse()" 
+              :key="index" 
+              :class="[
+                'py-1.5 px-2 rounded',
+                log.type === 'info' ? 'text-blue-700 bg-blue-50' : '',
+                log.type === 'success' ? 'text-green-700 bg-green-50' : '',
+                log.type === 'error' ? 'text-red-700 bg-red-50' : ''
+              ]"
+            >
+              <div class="font-semibold text-gray-500">[{{ log.time }}]</div>
+              <div>{{ log.message }}</div>
+            </div>
+          </div>
+        </section>
+      </div>
 
       <!-- 2. 效果预览区 -->
       <section class="bg-white rounded-xl shadow-md p-6">
@@ -225,27 +250,6 @@
         </div>
       </section>
 
-      <!-- 4. 日志区 -->
-      <section class="bg-white rounded-xl shadow-md p-6">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-500 pb-2">操作日志</h2>
-        <div class="space-y-3">
-          <el-button size="small" @click="logs = []">清空日志</el-button>
-          <ul class="space-y-1 max-h-80 overflow-y-auto bg-gray-50 rounded p-4 font-mono text-sm">
-            <li 
-              v-for="(log, index) in logs" 
-              :key="index" 
-              :class="[
-                'py-1 px-2 rounded',
-                log.type === 'info' ? 'text-blue-700 bg-blue-50' : '',
-                log.type === 'success' ? 'text-green-700 bg-green-50' : '',
-                log.type === 'error' ? 'text-red-700 bg-red-50' : ''
-              ]"
-            >
-              [{{ log.time }}] {{ log.message }}
-            </li>
-          </ul>
-        </div>
-      </section>
     </main>
   </div>
 </template>
