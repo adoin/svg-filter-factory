@@ -364,12 +364,12 @@ init()
         <h2>效果预览</h2>
         <div class="preview-container">
           <div class="filter-controls">
-            <h3>选择过滤器</h3>
+            <strong>当前应用：</strong> 
+            <code>{{ currentFilter || '无' }}</code>
             <div class="filter-selector">
               <el-button 
                 @click="applyFilter('')" 
                 :type="currentFilter === '' ? 'primary' : ''"
-                style="width: 100%; margin-bottom: 8px;"
               >
                 无过滤器
               </el-button>
@@ -378,15 +378,10 @@ init()
                 :key="filter"
                 @click="applyFilter(`url(#${filter})`)" 
                 :type="currentFilter === `url(#${filter})` ? 'primary' : ''"
-                style="width: 100%; margin-bottom: 8px;"
               >
                 {{ filter }}
               </el-button>
             </div>
-            <p class="current-filter-info">
-              <strong>当前应用：</strong> 
-              <code>{{ currentFilter || '无' }}</code>
-            </p>
           </div>
 
           <div class="preview-items">
@@ -406,7 +401,7 @@ init()
                     cy="100" 
                     r="60" 
                     fill="url(#gradient1)"
-                    :filter="currentFilter"
+                    :style="{ filter: currentFilter ? currentFilter : 'none' }"
                   />
                 </svg>
               </div>
@@ -417,7 +412,7 @@ init()
               <h4>文本</h4>
               <div class="preview-box">
                 <div style="display: flex; justify-content: center; align-items: center; height:200px;width:100%;">
-                  <span :style="{ filter: currentFilter,color:'#9b4607',fontSize:'40px',fontWeight:'bold' }">FILTER</span>
+                  <span :style="{ filter: currentFilter ? currentFilter : 'none',color:'#9b4607',fontSize:'40px',fontWeight:'bold' }">FILTER</span>
                 </div>
                 
               </div>
@@ -427,16 +422,12 @@ init()
             <div class="preview-item">
               <h4>图片</h4>
               <div class="preview-box">
-                <svg width="100%" height="200" viewBox="0 0 200 200">
-                  <image 
-                    href="https://picsum.photos/160/160" 
-                    x="20" 
-                    y="20" 
-                    width="160" 
-                    height="160"
-                    :filter="currentFilter"
+                <div style="display: flex; justify-content: center; align-items: center; height:200px;width:100%;">
+                  <img 
+                    src="https://picsum.photos/160/160" 
+                    :style="{filter:currentFilter ? currentFilter : 'none'}"
                   />
-                </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -681,16 +672,16 @@ init()
 
 /* 效果预览布局 */
 .preview-container {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 30px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .preview-items {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 20px;
+  width: 100%;
 }
 
 .preview-item {
@@ -733,6 +724,7 @@ init()
   padding: 20px;
   border-radius: 10px;
   border: 1px solid #e0e0e0;
+  width: 100%;
 }
 
 .filter-controls h3 {
@@ -746,7 +738,7 @@ init()
 
 .filter-selector {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   max-height: 400px;
   overflow-y: auto;
   padding: 10px;
