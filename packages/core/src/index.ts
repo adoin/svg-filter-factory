@@ -408,7 +408,7 @@ function getOrCreateSvgContainer(): SVGDefsElement {
   let svgDefs = document.getElementById('__svg_filter_factory_defs') as SVGDefsElement | null;
   if (!svgDefs) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.id = '__svg_filter_factory_defs';
+    svg.id = '__svg_filter_factory_svg';
     svg.style.position = 'absolute';
     svg.style.width = '0';
     svg.style.height = '0';
