@@ -175,6 +175,33 @@
       </el-text>
     </template>
 
+    <!-- feOffset -->
+    <template v-else-if="type === 'feOffset'">
+      <el-row :gutter="10">
+        <el-col :span="12">
+          <el-form-item label="偏移 X (dx)">
+            <el-input-number 
+              v-model="localProps.dx" 
+              :step="1"
+              size="small"
+              @blur="emitUpdate"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="偏移 Y (dy)">
+            <el-input-number 
+              v-model="localProps.dy" 
+              :step="1"
+              size="small"
+              @blur="emitUpdate"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-text type="info" size="small">将图像在水平和垂直方向上移动指定的像素距离</el-text>
+    </template>
+
     <!-- feComponentTransfer -->
     <template v-else-if="type === 'feComponentTransfer'">
       <div class="mb-3">
@@ -261,6 +288,7 @@
 
 <script setup lang="ts">
 import { ref, watch, defineComponent, h } from 'vue'
+import { ElFormItem, ElInput, ElInputNumber, ElRow, ElCol, ElText } from 'element-plus'
 import type { ComponentTransferFuncProps, ColorMatrixProps } from '@svg-filter-factory/core'
 
 const props = defineProps<{
@@ -476,7 +504,9 @@ const getChannelParamsComponent = (channel: 'funcR' | 'funcG' | 'funcB' | 'funcA
       }, { deep: true })
       
       const updateProp = (key: string, value: any) => {
-        localChannelProps.value = { ...localChannelProps.value, [key]: value }
+        if (value !== undefined) {
+          localChannelProps.value = { ...localChannelProps.value, [key]: value }
+        }
       }
       
       const emitChannelUpdate = () => {
@@ -487,13 +517,13 @@ const getChannelParamsComponent = (channel: 'funcR' | 'funcG' | 'funcB' | 'funcA
         const funcType = localChannelProps.value.type
         
         if (funcType === 'identity') {
-          return h('el-text', { type: 'info', size: 'small' }, '不对该通道进行任何转换')
+          return h(ElText, { type: 'info', size: 'small' }, () => '不对该通道进行任何转换')
         }
         
         if (funcType === 'table' || funcType === 'discrete') {
           return h('div', [
-            h('el-form-item', { label: funcType === 'table' ? '查找表值' : '离散值' }, [
-              h('el-input', {
+            h(ElFormItem, { label: funcType === 'table' ? '查找表值' : '离散值' }, () => [
+              h(ElInput, {
                 modelValue: localChannelProps.value.tableValues,
                 'onUpdate:modelValue': (val: string) => updateProp('tableValues', val),
                 onBlur: emitChannelUpdate,
@@ -501,7 +531,7 @@ const getChannelParamsComponent = (channel: 'funcR' | 'funcG' | 'funcB' | 'funcA
                 size: 'small'
               })
             ]),
-            h('el-text', { type: 'info', size: 'small' }, 
+            h(ElText, { type: 'info', size: 'small' }, () => 
               funcType === 'table' 
                 ? '线性插值的查找表，例如: 0 0.5 1' 
                 : '阶跃函数的离散值，例如: 0 0.5 1'
@@ -511,23 +541,23 @@ const getChannelParamsComponent = (channel: 'funcR' | 'funcG' | 'funcB' | 'funcA
         
         if (funcType === 'linear') {
           return h('div', [
-            h('el-row', { gutter: 10 }, [
-              h('el-col', { span: 12 }, [
-                h('el-form-item', { label: '斜率 (slope)' }, [
-                  h('el-input-number', {
+            h(ElRow, { gutter: 10 }, () => [
+              h(ElCol, { span: 12 }, () => [
+                h(ElFormItem, { label: '斜率 (slope)' }, () => [
+                  h(ElInputNumber, {
                     modelValue: localChannelProps.value.slope,
-                    'onUpdate:modelValue': (val: number) => updateProp('slope', val),
+                    'onUpdate:modelValue': (val: number | undefined) => updateProp('slope', val),
                     onBlur: emitChannelUpdate,
                     step: 0.1,
                     size: 'small'
                   })
                 ])
               ]),
-              h('el-col', { span: 12 }, [
-                h('el-form-item', { label: '截距 (intercept)' }, [
-                  h('el-input-number', {
+              h(ElCol, { span: 12 }, () => [
+                h(ElFormItem, { label: '截距 (intercept)' }, () => [
+                  h(ElInputNumber, {
                     modelValue: localChannelProps.value.intercept,
-                    'onUpdate:modelValue': (val: number) => updateProp('intercept', val),
+                    'onUpdate:modelValue': (val: number | undefined) => updateProp('intercept', val),
                     onBlur: emitChannelUpdate,
                     step: 0.1,
                     size: 'small'
@@ -535,40 +565,40 @@ const getChannelParamsComponent = (channel: 'funcR' | 'funcG' | 'funcB' | 'funcA
                 ])
               ])
             ]),
-            h('el-text', { type: 'info', size: 'small' }, '线性函数: C\' = slope * C + intercept')
+            h(ElText, { type: 'info', size: 'small' }, () => '线性函数: C\' = slope * C + intercept')
           ])
         }
         
         if (funcType === 'gamma') {
           return h('div', [
-            h('el-row', { gutter: 10 }, [
-              h('el-col', { span: 8 }, [
-                h('el-form-item', { label: '振幅 (amplitude)' }, [
-                  h('el-input-number', {
+            h(ElRow, { gutter: 10 }, () => [
+              h(ElCol, { span: 24 }, () => [
+                h(ElFormItem, { label: '振幅 (amplitude)' }, () => [
+                  h(ElInputNumber, {
                     modelValue: localChannelProps.value.amplitude,
-                    'onUpdate:modelValue': (val: number) => updateProp('amplitude', val),
+                    'onUpdate:modelValue': (val: number | undefined) => updateProp('amplitude', val),
                     onBlur: emitChannelUpdate,
                     step: 0.1,
                     size: 'small'
                   })
                 ])
               ]),
-              h('el-col', { span: 8 }, [
-                h('el-form-item', { label: '指数 (exponent)' }, [
-                  h('el-input-number', {
+              h(ElCol, { span: 24 }, () => [
+                h(ElFormItem, { label: '指数 (exponent)' }, () => [
+                  h(ElInputNumber, {
                     modelValue: localChannelProps.value.exponent,
-                    'onUpdate:modelValue': (val: number) => updateProp('exponent', val),
+                    'onUpdate:modelValue': (val: number | undefined) => updateProp('exponent', val),
                     onBlur: emitChannelUpdate,
                     step: 0.1,
                     size: 'small'
                   })
                 ])
               ]),
-              h('el-col', { span: 8 }, [
-                h('el-form-item', { label: '偏移 (offset)' }, [
-                  h('el-input-number', {
+              h(ElCol, { span: 24 }, () => [
+                h(ElFormItem, { label: '偏移 (offset)' }, () => [
+                  h(ElInputNumber, {
                     modelValue: localChannelProps.value.offset,
-                    'onUpdate:modelValue': (val: number) => updateProp('offset', val),
+                    'onUpdate:modelValue': (val: number | undefined) => updateProp('offset', val),
                     onBlur: emitChannelUpdate,
                     step: 0.1,
                     size: 'small'
@@ -576,7 +606,7 @@ const getChannelParamsComponent = (channel: 'funcR' | 'funcG' | 'funcB' | 'funcA
                 ])
               ])
             ]),
-            h('el-text', { type: 'info', size: 'small' }, 'Gamma 函数: C\' = amplitude * pow(C, exponent) + offset')
+            h(ElText, { type: 'info', size: 'small' }, () => 'Gamma 函数: C\' = amplitude * pow(C, exponent) + offset')
           ])
         }
         
