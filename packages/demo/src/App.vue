@@ -69,7 +69,7 @@
           </div>
           <div class="flex-1 overflow-y-auto max-h-[300px] space-y-1 bg-gray-50 rounded p-3 font-mono text-xs">
             <div 
-              v-for="(log, index) in logs.reverse()" 
+              v-for="(log, index) in logs" 
               :key="index" 
               :class="[
                 'py-1.5 px-2 rounded',

@@ -101,6 +101,40 @@
       <el-text type="info" size="small">创建阴影效果：dx/dy 控制偏移，stdDeviation 控制模糊度</el-text>
     </template>
 
+    <!-- feColorMatrix -->
+    <template v-else-if="type === 'feColorMatrix'">
+      <el-form-item label="类型">
+        <el-select 
+          v-model="localProps.type" 
+          @change="onColorMatrixTypeChange"
+          :options="colorMatrixTypes"
+        />
+      </el-form-item>
+      
+      <!-- 当类型为 matrix 时使用 textarea -->
+      <el-form-item v-if="localProps.type === 'matrix'" label="矩阵值 (4行5列)">
+        <el-input
+          v-model="localProps.matrixValues"
+          type="textarea"
+          :rows="5"
+          @blur="updateColorMatrixValues"
+          placeholder="1 0 0 0 0&#10;0 1 0 0 0&#10;0 0 1 0 0&#10;0 0 0 1 0"
+          class="font-mono"
+        />
+      </el-form-item>
+      
+      <!-- 其他类型使用普通输入（luminanceToAlpha 不显示） -->
+      <el-form-item v-else-if="localProps.type !== 'luminanceToAlpha'" label="值">
+        <el-input
+          v-model="localProps.singleValue"
+          @blur="updateColorMatrixValues"
+          :placeholder="getColorMatrixPlaceholder(localProps.type)"
+        />
+      </el-form-item>
+      
+      <el-text type="info" size="small">{{ getColorMatrixDescription(localProps.type) }}</el-text>
+    </template>
+
     <!-- feComponentTransfer -->
     <template v-else-if="type === 'feComponentTransfer'">
       <div class="mb-3">
@@ -187,7 +221,7 @@
 
 <script setup lang="ts">
 import { ref, watch, defineComponent, h } from 'vue'
-import type { ComponentTransferFuncProps } from '@svg-filter-factory/core'
+import type { ComponentTransferFuncProps, ColorMatrixProps } from '@svg-filter-factory/core'
 
 const props = defineProps<{
   type: string
@@ -208,6 +242,14 @@ const channelFunctionTypes = [
   { label: 'gamma - 伽马校正', value: 'gamma' }
 ]
 
+// 颜色矩阵类型选项
+const colorMatrixTypes = [
+  { label: '饱和度 (saturate)', value: 'saturate' },
+  { label: '色相旋转 (hueRotate)', value: 'hueRotate' },
+  { label: '亮度转Alpha (luminanceToAlpha)', value: 'luminanceToAlpha' },
+  { label: '自定义矩阵 (matrix)', value: 'matrix' }
+]
+
 // 初始化 localProps
 watch(() => props.modelValue, (newVal) => {
   localProps.value = { ...newVal }
@@ -225,6 +267,18 @@ watch(() => props.modelValue, (newVal) => {
     localProps.value.funcG = newVal?.funcG || { type: 'identity' }
     localProps.value.funcB = newVal?.funcB || { type: 'identity' }
     localProps.value.funcA = newVal?.funcA || { type: 'identity' }
+  }
+  
+  // 特殊处理 feColorMatrix
+  if (props.type === 'feColorMatrix') {
+    const matrixType = newVal?.type || 'saturate'
+    localProps.value.type = matrixType
+    
+    if (matrixType === 'matrix') {
+      localProps.value.matrixValues = newVal?.values || '1 0 0 0 0\n0 1 0 0 0\n0 0 1 0 0\n0 0 0 1 0'
+    } else {
+      localProps.value.singleValue = newVal?.values || getColorMatrixDefaultValue(matrixType)
+    }
   }
 }, { immediate: true, deep: true })
 
@@ -244,6 +298,90 @@ const emitUpdate = () => {
 
 const updateStdDeviation = () => {
   emitUpdate()
+}
+
+// feColorMatrix 辅助函数
+const getColorMatrixDefaultValue = (type: string): string => {
+  switch (type) {
+    case 'saturate':
+      return '1'
+    case 'hueRotate':
+      return '0'
+    case 'luminanceToAlpha':
+      return ''
+    case 'matrix':
+      return '1 0 0 0 0\n0 1 0 0 0\n0 0 1 0 0\n0 0 0 1 0'
+    default:
+      return '1'
+  }
+}
+
+const getColorMatrixPlaceholder = (type: string): string => {
+  switch (type) {
+    case 'saturate':
+      return '0-2 (0=灰度, 1=原色, 2=增强)'
+    case 'hueRotate':
+      return '0-360 (度数)'
+    case 'luminanceToAlpha':
+      return '无需输入值'
+    default:
+      return ''
+  }
+}
+
+const getColorMatrixDescription = (type: string): string => {
+  switch (type) {
+    case 'saturate':
+      return '饱和度：0=灰度, 1=原色, >1=增强'
+    case 'hueRotate':
+      return '色相旋转：0-360度旋转色环'
+    case 'luminanceToAlpha':
+      return '将图像亮度转换为Alpha透明度通道'
+    case 'matrix':
+      return '自定义4x5颜色转换矩阵，每行5个数字，控制RGBA通道变换'
+    default:
+      return ''
+  }
+}
+
+const onColorMatrixTypeChange = () => {
+  const newType = localProps.value.type
+  const defaultValue = getColorMatrixDefaultValue(newType)
+  
+  if (newType === 'matrix') {
+    localProps.value.matrixValues = defaultValue
+    delete localProps.value.singleValue
+  } else if (newType === 'luminanceToAlpha') {
+    // luminanceToAlpha 不需要 values，清空所有值输入
+    delete localProps.value.singleValue
+    delete localProps.value.matrixValues
+  } else {
+    localProps.value.singleValue = defaultValue
+    delete localProps.value.matrixValues
+  }
+  
+  updateColorMatrixValues()
+}
+
+const updateColorMatrixValues = () => {
+  const updatedProps: any = { ...localProps.value }
+  
+  if (updatedProps.type === 'matrix') {
+    updatedProps.values = updatedProps.matrixValues
+    delete updatedProps.matrixValues
+    delete updatedProps.singleValue
+  } else if (updatedProps.type === 'luminanceToAlpha') {
+    // luminanceToAlpha 不需要 values 属性
+    delete updatedProps.values
+    delete updatedProps.matrixValues
+    delete updatedProps.singleValue
+  } else {
+    updatedProps.values = updatedProps.singleValue
+    delete updatedProps.singleValue
+    delete updatedProps.matrixValues
+  }
+  
+  emit('update:modelValue', updatedProps)
 }
 
 // feComponentTransfer 通道类型切换
