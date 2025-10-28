@@ -1,226 +1,3 @@
-<template>
-  <div class="app">
-    <header class="header">
-      <h1>SVG Filter Factory Demo</h1>
-      <p>演示SVG过滤器的注册、渲染和动态创建 - 基于17种SVG过滤器类型</p>
-    </header>
-
-    <main class="main">
-      <!-- 1. 快速示例区 -->
-      <section class="demo-section">
-        <h2>快速示例</h2>
-        <div class="quick-demo">
-          <el-button type="primary" @click="registerSampleFilters">
-            注册示例过滤器
-          </el-button>
-          <el-button type="danger" @click="clearAllFilters">
-            清除所有过滤器
-          </el-button>
-          <div v-if="registeredFilters.length > 0" class="registered-filters">
-            <h3>已注册的过滤器：</h3>
-            <div class="filter-cards">
-              <div v-for="filter in registeredFilters" :key="filter.id" class="filter-card">
-                <div class="filter-card-header">
-                  <strong class="filter-id">{{ filter.id }}</strong>
-                  <span class="filter-count">{{ filter.config.length }} 个子过滤器</span>
-                </div>
-                <div class="filter-card-details">
-                  <div v-for="(sub, idx) in filter.config" :key="idx" class="sub-filter-detail">
-                    <span class="sub-filter-index">{{ idx + 1 }}.</span>
-                    <span class="sub-filter-type">{{ sub.type }}</span>
-                    <span v-if="sub.result" class="sub-filter-attr">→ {{ sub.result }}</span>
-                    <span v-if="sub.in" class="sub-filter-attr">(in: {{ sub.in }})</span>
-                  </div>
-                </div>
-                <div class="filter-card-actions">
-                  <el-button type="success" size="small" @click="renderAndApplyFilter(filter.id)">
-                    渲染并应用
-                  </el-button>
-                  <el-button type="info" size="small" @click="renderFilter(filter.id)">
-                    仅渲染
-                  </el-button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. 效果预览区 -->
-      <section class="demo-section">
-        <h2>效果预览</h2>
-        <div class="preview-container">
-          <div class="filter-controls">
-            <h3>选择过滤器</h3>
-            <div class="filter-selector">
-              <el-button 
-                @click="applyFilter('')" 
-                :type="currentFilter === '' ? 'primary' : ''"
-                style="width: 100%; margin-bottom: 8px;"
-              >
-                无过滤器
-              </el-button>
-              <el-button 
-                v-for="filter in renderedFilters" 
-                :key="filter"
-                @click="applyFilter(`url(#${filter})`)" 
-                :type="currentFilter === `url(#${filter})` ? 'primary' : ''"
-                style="width: 100%; margin-bottom: 8px;"
-              >
-                {{ filter }}
-              </el-button>
-            </div>
-            <p class="current-filter-info">
-              <strong>当前应用：</strong> 
-              <code>{{ currentFilter || '无' }}</code>
-            </p>
-          </div>
-
-          <div class="preview-items">
-            <!-- SVG图形 -->
-            <div class="preview-item">
-              <h4>SVG 图形</h4>
-              <div class="preview-box">
-                <svg width="100%" height="200" viewBox="0 0 200 200">
-                  <defs>
-                    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-                      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
-                    </linearGradient>
-                  </defs>
-                  <circle 
-                    cx="100" 
-                    cy="100" 
-                    r="60" 
-                    fill="url(#gradient1)"
-                    :filter="currentFilter"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <!-- 文本 -->
-            <div class="preview-item">
-              <h4>文本</h4>
-              <div class="preview-box">
-                <svg width="100%" height="200" viewBox="0 0 200 200">
-                  <text 
-                    x="100" 
-                    y="110" 
-                    font-size="42" 
-                    font-weight="bold"
-                    fill="#333" 
-                    text-anchor="middle"
-                    :filter="currentFilter"
-                  >
-                    FILTER
-                  </text>
-                </svg>
-              </div>
-            </div>
-
-            <!-- 图片 -->
-            <div class="preview-item">
-              <h4>图片</h4>
-              <div class="preview-box">
-                <svg width="100%" height="200" viewBox="0 0 200 200">
-                  <image 
-                    href="https://picsum.photos/160/160" 
-                    x="20" 
-                    y="20" 
-                    width="160" 
-                    height="160"
-                    :filter="currentFilter"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. 动态表单创建过滤器 -->
-      <section class="demo-section">
-        <h2>动态创建过滤器</h2>
-        <div class="filter-builder">
-          <div class="builder-controls">
-            <div class="form-group">
-              <label>过滤器 ID:</label>
-              <el-input v-model="newFilterId" type="text" placeholder="例如: my-custom-filter" />
-            </div>
-            
-            <div class="sub-filters">
-              <h3>子过滤器列表：</h3>
-              <div v-for="(subFilter, index) in newSubFilters" :key="index" class="sub-filter-item">
-                <div class="sub-filter-header">
-                  <span>子过滤器 {{ index + 1 }}</span>
-                  <el-button type="danger" size="small" @click="removeSubFilter(index)">删除</el-button>
-                </div>
-                
-                <div class="form-group">
-                  <label>类型:</label>
-                  <el-select 
-                    v-model="subFilter.type" 
-                    @change="onFilterTypeChange(index, subFilter.type)" 
-                    placeholder="选择类型..."
-                    :options="filterTypeOptions"
-                  />
-                </div>
-                
-                <div class="form-group">
-                  <label>别名 (result):</label>
-                  <el-input v-model="subFilter.result" type="text" placeholder="用于后续混合引用，例如: blur" />
-                  <small class="field-desc">为此过滤器效果定义一个别名，可在后续过滤器中通过 in 引用</small>
-                </div>
-                
-                <!-- 动态属性编辑器 -->
-                <div v-if="subFilter.type" class="props-editor">
-                  <FilterPropsEditor 
-                    :type="subFilter.type" 
-                    v-model="subFilter.props"
-                    :available-aliases="getAvailableAliases(index)"
-                  />
-                </div>
-              </div>
-              
-              <el-button type="info" @click="addSubFilter">
-                + 添加子过滤器
-              </el-button>
-            </div>
-            
-            <div class="builder-actions">
-              <el-button type="success" @click="createFilter">
-                创建并注册过滤器
-              </el-button>
-              <el-button @click="resetBuilder">
-                重置表单
-              </el-button>
-            </div>
-          </div>
-          
-          <div class="builder-preview">
-            <h3>预览代码:</h3>
-            <pre class="code-preview"><code class="language-javascript" v-html="highlightedCode"></code></pre>
-          </div>
-        </div>
-      </section>
-
-      <!-- 4. 日志区 -->
-      <section class="demo-section">
-        <h2>操作日志</h2>
-        <div class="logs">
-          <el-button size="small" @click="logs = []">清空日志</el-button>
-          <ul>
-            <li v-for="(log, index) in logs" :key="index" :class="'log-' + log.type">
-              [{{ log.time }}] {{ log.message }}
-            </li>
-          </ul>
-        </div>
-      </section>
-    </main>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import FilterPropsEditor from './components/FilterPropsEditor.vue'
@@ -452,12 +229,12 @@ const createFilter = () => {
       id: newFilterId.value,
       config
     })
-    
+    render(newFilterId.value)
     registeredFilters.value = getRegisteredFilters()
     addLog(`成功创建过滤器: ${newFilterId.value}`, 'success')
     
     // 自动渲染并应用
-    render(newFilterId.value)
+    renderAndApplyFilter(newFilterId.value)
     if (!renderedFilters.value.includes(newFilterId.value)) {
       renderedFilters.value.push(newFilterId.value)
     }
@@ -534,6 +311,219 @@ const init = () => {
 
 init()
 </script>
+<template>
+  <div class="app">
+    <header class="header">
+      <h1>SVG Filter Factory Demo</h1>
+      <p>演示SVG过滤器的注册、渲染和动态创建 - 基于17种SVG过滤器类型</p>
+    </header>
+
+    <main class="main">
+      <!-- 1. 快速示例区 -->
+      <section class="demo-section">
+        <h2>快速示例</h2>
+        <div class="quick-demo">
+          <el-button type="primary" @click="registerSampleFilters">
+            注册示例过滤器
+          </el-button>
+          <el-button type="danger" @click="clearAllFilters">
+            清除所有过滤器
+          </el-button>
+          <div v-if="registeredFilters.length > 0" class="registered-filters">
+            <h3>已注册的过滤器：</h3>
+            <div class="filter-cards">
+              <div v-for="filter in registeredFilters" :key="filter.id" class="filter-card">
+                <div class="filter-card-header">
+                  <strong class="filter-id">{{ filter.id }}</strong>
+                  <span class="filter-count">{{ filter.config.length }} 个子过滤器</span>
+                </div>
+                <div class="filter-card-details">
+                  <div v-for="(sub, idx) in filter.config" :key="idx" class="sub-filter-detail">
+                    <span class="sub-filter-index">{{ idx + 1 }}.</span>
+                    <span class="sub-filter-type">{{ sub.type }}</span>
+                    <span v-if="sub.result" class="sub-filter-attr">→ {{ sub.result }}</span>
+                    <span v-if="sub.in" class="sub-filter-attr">(in: {{ sub.in }})</span>
+                  </div>
+                </div>
+                <div class="filter-card-actions">
+                  <el-button type="success" size="small" @click="renderAndApplyFilter(filter.id)">
+                    渲染并应用
+                  </el-button>
+                  <el-button type="info" size="small" @click="renderFilter(filter.id)">
+                    仅渲染
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 效果预览区 -->
+      <section class="demo-section">
+        <h2>效果预览</h2>
+        <div class="preview-container">
+          <div class="filter-controls">
+            <h3>选择过滤器</h3>
+            <div class="filter-selector">
+              <el-button 
+                @click="applyFilter('')" 
+                :type="currentFilter === '' ? 'primary' : ''"
+                style="width: 100%; margin-bottom: 8px;"
+              >
+                无过滤器
+              </el-button>
+              <el-button 
+                v-for="filter in renderedFilters" 
+                :key="filter"
+                @click="applyFilter(`url(#${filter})`)" 
+                :type="currentFilter === `url(#${filter})` ? 'primary' : ''"
+                style="width: 100%; margin-bottom: 8px;"
+              >
+                {{ filter }}
+              </el-button>
+            </div>
+            <p class="current-filter-info">
+              <strong>当前应用：</strong> 
+              <code>{{ currentFilter || '无' }}</code>
+            </p>
+          </div>
+
+          <div class="preview-items">
+            <!-- SVG图形 -->
+            <div class="preview-item">
+              <h4>SVG 图形</h4>
+              <div class="preview-box">
+                <svg width="100%" height="200" viewBox="0 0 200 200">
+                  <defs>
+                    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                    </linearGradient>
+                  </defs>
+                  <circle 
+                    cx="100" 
+                    cy="100" 
+                    r="60" 
+                    fill="url(#gradient1)"
+                    :filter="currentFilter"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <!-- 文本 -->
+            <div class="preview-item">
+              <h4>文本</h4>
+              <div class="preview-box">
+                <div style="display: flex; justify-content: center; align-items: center; height:200px;width:100%;">
+                  <span :style="{ filter: currentFilter,color:'#9b4607',fontSize:'40px',fontWeight:'bold' }">FILTER</span>
+                </div>
+                
+              </div>
+            </div>
+
+            <!-- 图片 -->
+            <div class="preview-item">
+              <h4>图片</h4>
+              <div class="preview-box">
+                <svg width="100%" height="200" viewBox="0 0 200 200">
+                  <image 
+                    href="https://picsum.photos/160/160" 
+                    x="20" 
+                    y="20" 
+                    width="160" 
+                    height="160"
+                    :filter="currentFilter"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. 动态表单创建过滤器 -->
+      <section class="demo-section">
+        <h2>动态创建过滤器</h2>
+        <div class="filter-builder">
+          <div class="builder-controls">
+            <div class="form-group">
+              <label>过滤器 ID:</label>
+              <el-input v-model="newFilterId" type="text" placeholder="例如: my-custom-filter" />
+            </div>
+            
+            <div class="sub-filters">
+              <h3>子过滤器列表：</h3>
+              <div v-for="(subFilter, index) in newSubFilters" :key="index" class="sub-filter-item">
+                <div class="sub-filter-header">
+                  <span>子过滤器 {{ index + 1 }}</span>
+                  <el-button type="danger" size="small" @click="removeSubFilter(index)">删除</el-button>
+                </div>
+                
+                <div class="form-group">
+                  <label>类型:</label>
+                  <el-select 
+                    v-model="subFilter.type" 
+                    @change="onFilterTypeChange(index, subFilter.type)" 
+                    placeholder="选择类型..."
+                    :options="filterTypeOptions"
+                  />
+                </div>
+                
+                <div class="form-group">
+                  <label>别名 (result):</label>
+                  <el-input v-model="subFilter.result" type="text" placeholder="用于后续混合引用，例如: blur" />
+                  <small class="field-desc">为此过滤器效果定义一个别名，可在后续过滤器中通过 in 引用</small>
+                </div>
+                
+                <!-- 动态属性编辑器 -->
+                <div v-if="subFilter.type" class="props-editor">
+                  <FilterPropsEditor 
+                    :type="subFilter.type" 
+                    v-model="subFilter.props"
+                    :available-aliases="getAvailableAliases(index)"
+                  />
+                </div>
+              </div>
+              
+              <el-button type="info" @click="addSubFilter">
+                + 添加子过滤器
+              </el-button>
+            </div>
+            
+            <div class="builder-actions">
+              <el-button type="success" @click="createFilter">
+                创建并注册过滤器
+              </el-button>
+              <el-button @click="resetBuilder">
+                重置表单
+              </el-button>
+            </div>
+          </div>
+          
+          <div class="builder-preview">
+            <h3>预览代码:</h3>
+            <pre class="code-preview"><code class="language-javascript" v-html="highlightedCode"></code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. 日志区 -->
+      <section class="demo-section">
+        <h2>操作日志</h2>
+        <div class="logs">
+          <el-button size="small" @click="logs = []">清空日志</el-button>
+          <ul>
+            <li v-for="(log, index) in logs" :key="index" :class="'log-' + log.type">
+              [{{ log.time }}] {{ log.message }}
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+</template>
 
 <style scoped>
 * {

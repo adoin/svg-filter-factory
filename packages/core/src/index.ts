@@ -456,7 +456,15 @@ export function render(filterIds: string | string[]): void {
     console.log(`Filter "${filterId}" rendered successfully.`);
   });
 }
-
+/**
+ * Render all filters to the DOM
+ */
+export function renderAll(): void {
+  const filters = getRegisteredFilters();
+  filters.forEach(filter => {
+    render(filter.id);
+  });
+}
 /**
  * Get all registered filters from localStorage
  */
