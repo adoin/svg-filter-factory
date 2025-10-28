@@ -135,6 +135,46 @@
       <el-text type="info" size="small">{{ getColorMatrixDescription(localProps.type) }}</el-text>
     </template>
 
+    <!-- feMorphology -->
+    <template v-else-if="type === 'feMorphology'">
+      <el-form-item label="操作类型">
+        <el-select 
+          v-model="localProps.operator" 
+          @change="emitUpdate"
+          :options="morphologyOperators"
+        />
+      </el-form-item>
+      
+      <el-row :gutter="10">
+        <el-col :span="12">
+          <el-form-item label="变形半径 X">
+            <el-input-number 
+              v-model="localProps.radiusX" 
+              :min="0" 
+              :step="1"
+              size="small"
+              @blur="updateRadius"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="变形半径 Y">
+            <el-input-number 
+              v-model="localProps.radiusY" 
+              :min="0" 
+              :step="1"
+              size="small"
+              @blur="updateRadius"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      
+      <el-text type="info" size="small">
+        {{ localProps.operator === 'erode' ? '侵蚀：使图像变细，减小明亮区域' : '膨胀：使图像变粗，扩大明亮区域' }}
+      </el-text>
+    </template>
+
     <!-- feComponentTransfer -->
     <template v-else-if="type === 'feComponentTransfer'">
       <div class="mb-3">
@@ -250,6 +290,12 @@ const colorMatrixTypes = [
   { label: '自定义矩阵 (matrix)', value: 'matrix' }
 ]
 
+// 形态学操作类型选项
+const morphologyOperators = [
+  { label: '侵蚀 (erode)', value: 'erode' },
+  { label: '膨胀 (dilate)', value: 'dilate' }
+]
+
 // 初始化 localProps
 watch(() => props.modelValue, (newVal) => {
   localProps.value = { ...newVal }
@@ -259,6 +305,13 @@ watch(() => props.modelValue, (newVal) => {
     const [x, y] = (newVal?.stdDeviation?.toString() || '2,2').split(',')
     localProps.value.stdDeviationX = parseFloat(x)
     localProps.value.stdDeviationY = parseFloat(y)
+  }
+  
+  // 特殊处理 feMorphology 的 radius
+  if (props.type === 'feMorphology') {
+    const [x, y] = (newVal?.radius?.toString() || '0,0').split(',')
+    localProps.value.radiusX = parseFloat(x)
+    localProps.value.radiusY = parseFloat(y)
   }
   
   // 特殊处理 feComponentTransfer 的四个通道
@@ -293,10 +346,21 @@ const emitUpdate = () => {
     delete updatedProps.stdDeviationY
   }
   
+  // 重构 radius
+  if (props.type === 'feMorphology') {
+    updatedProps.radius = `${updatedProps.radiusX || 0},${updatedProps.radiusY || 0}`
+    delete updatedProps.radiusX
+    delete updatedProps.radiusY
+  }
+  
   emit('update:modelValue', updatedProps)
 }
 
 const updateStdDeviation = () => {
+  emitUpdate()
+}
+
+const updateRadius = () => {
   emitUpdate()
 }
 
