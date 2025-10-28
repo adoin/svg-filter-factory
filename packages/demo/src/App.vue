@@ -1,5 +1,257 @@
+<template>
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-8 px-6 shadow-lg">
+      <h1 class="text-4xl font-bold mb-2">SVG Filter Factory Demo</h1>
+      <p class="text-purple-100 text-lg">演示SVG过滤器的注册、渲染和动态创建 - 基于17种SVG过滤器类型</p>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <!-- 1. 快速示例区 -->
+      <section class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-500 pb-2">快速示例</h2>
+        <div class="space-y-4">
+          <div class="flex gap-3">
+            <el-button type="primary" @click="registerSampleFilters">
+              注册示例过滤器
+            </el-button>
+            <el-button type="danger" @click="clearAllFilters">
+              清除所有过滤器
+            </el-button>
+          </div>
+          
+          <div v-if="registeredFilters.length > 0" class="space-y-3">
+            <h3 class="text-xl font-semibold text-gray-700">已注册的过滤器：</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div 
+                v-for="filter in registeredFilters" 
+                :key="filter.id" 
+                class="border-2 border-purple-200 rounded-lg p-4 hover:shadow-lg transition-shadow bg-gradient-to-br from-purple-50 to-indigo-50"
+              >
+                <div class="flex justify-between items-center mb-3">
+                  <strong class="text-lg font-mono text-purple-700">{{ filter.id }}</strong>
+                  <span class="text-sm bg-purple-200 text-purple-800 px-2 py-1 rounded-full">
+                    {{ filter.config.length }} 个子过滤器
+                  </span>
+                </div>
+                <div class="space-y-2 mb-4">
+                  <div 
+                    v-for="(sub, idx) in filter.config" 
+                    :key="idx" 
+                    class="flex items-center gap-2 text-sm"
+                  >
+                    <span class="font-semibold text-gray-600">{{ idx + 1 }}.</span>
+                    <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">{{ sub.type }}</span>
+                    <span v-if="sub.result" class="text-green-600 text-xs">→ {{ sub.result }}</span>
+                    <span v-if="sub.in" class="text-gray-500 text-xs">(in: {{ sub.in }})</span>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <el-button type="success" size="small" class="flex-1" @click="renderAndApplyFilter(filter.id)">
+                    渲染并应用
+                  </el-button>
+                  <el-button type="info" size="small" class="flex-1" @click="renderFilter(filter.id)">
+                    仅渲染
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 效果预览区 -->
+      <section class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-500 pb-2">效果预览</h2>
+        <div class="space-y-4">
+          <div class="bg-gray-50 rounded-lg p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <strong class="text-gray-700">当前应用：</strong> 
+              <code class="bg-purple-100 text-purple-800 px-3 py-1 rounded font-mono text-sm">
+                {{ currentFilter || '无' }}
+              </code>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <el-button 
+                @click="applyFilter('')" 
+                :type="currentFilter === '' ? 'primary' : ''"
+                size="small"
+              >
+                无过滤器
+              </el-button>
+              <el-button 
+                v-for="filter in renderedFilters" 
+                :key="filter"
+                @click="applyFilter(`url(#${filter})`)" 
+                :type="currentFilter === `url(#${filter})` ? 'primary' : ''"
+                size="small"
+                class="font-mono"
+              >
+                {{ filter }}
+              </el-button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- SVG图形 -->
+            <div class="flex flex-col">
+              <h4 class="text-center font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-t-lg">
+                SVG 图形
+              </h4>
+              <div class="flex justify-center items-center h-240px bg-gradient-to-br from-gray-50 to-blue-50 rounded-b-lg shadow p-5">
+                <svg width="100%" height="200" viewBox="0 0 200 200">
+                  <defs>
+                    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                    </linearGradient>
+                  </defs>
+                  <circle 
+                    cx="100" 
+                    cy="100" 
+                    r="60" 
+                    fill="url(#gradient1)"
+                    :style="{ filter: currentFilter ? currentFilter : 'none' }"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <!-- 文本 -->
+            <div class="flex flex-col">
+              <h4 class="text-center font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-t-lg">
+                文本
+              </h4>
+              <div class="flex justify-center items-center h-240px bg-gradient-to-br from-gray-50 to-blue-50 rounded-b-lg shadow p-5">
+                <span 
+                  class="text-5xl font-bold"
+                  :style="{ 
+                    filter: currentFilter ? currentFilter : 'none',
+                    color: '#9b4607'
+                  }"
+                >
+                  FILTER
+                </span>
+              </div>
+            </div>
+
+            <!-- 图片 -->
+            <div class="flex flex-col">
+              <h4 class="text-center font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-t-lg">
+                图片
+              </h4>
+              <div class="flex justify-center items-center h-240px bg-gradient-to-br from-gray-50 to-blue-50 rounded-b-lg shadow p-5">
+                <img 
+                  src="https://picsum.photos/160/160" 
+                  class="rounded-lg shadow-md"
+                  :style="{ filter: currentFilter ? currentFilter : 'none' }"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. 动态表单创建过滤器 -->
+      <section class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-500 pb-2">动态创建过滤器</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- 左侧：表单 -->
+          <div class="space-y-4">
+            <div class="space-y-2">
+              <label class="block font-semibold text-gray-700">过滤器 ID:</label>
+              <el-input v-model="newFilterId" placeholder="例如: my-custom-filter" />
+            </div>
+            
+            <div class="space-y-3">
+              <h3 class="text-lg font-semibold text-gray-700">子过滤器列表：</h3>
+              <div 
+                v-for="(subFilter, index) in newSubFilters" 
+                :key="index" 
+                class="border-2 border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50"
+              >
+                <div class="flex justify-between items-center">
+                  <span class="font-semibold text-purple-700">子过滤器 {{ index + 1 }}</span>
+                  <el-button type="danger" size="small" @click="removeSubFilter(index)">删除</el-button>
+                </div>
+                
+                <div class="space-y-2">
+                  <label class="block font-medium text-gray-600 text-sm">类型:</label>
+                  <el-select 
+                    v-model="subFilter.type" 
+                    @change="onFilterTypeChange(index, subFilter.type)" 
+                    placeholder="选择类型..."
+                    :options="filterTypeOptions"
+                    class="w-full"
+                  />
+                </div>
+                
+                <div class="space-y-2">
+                  <label class="block font-medium text-gray-600 text-sm">别名 (result):</label>
+                  <el-input v-model="subFilter.result" placeholder="用于后续混合引用，例如: blur" />
+                  <small class="block text-gray-500 text-xs">为此过滤器效果定义一个别名，可在后续过滤器中通过 in 引用</small>
+                </div>
+                
+                <!-- 动态属性编辑器 -->
+                <div v-if="subFilter.type" class="mt-3">
+                  <FilterPropsEditor 
+                    :type="subFilter.type" 
+                    v-model="subFilter.props"
+                    :available-aliases="getAvailableAliases(index)"
+                  />
+                </div>
+              </div>
+              
+              <el-button type="info" @click="addSubFilter" class="w-full">
+                + 添加子过滤器
+              </el-button>
+            </div>
+            
+            <div class="flex gap-3">
+              <el-button type="success" @click="createFilter" class="flex-1">
+                创建并注册过滤器
+              </el-button>
+              <el-button @click="resetBuilder" class="flex-1">
+                重置表单
+              </el-button>
+            </div>
+          </div>
+          
+          <!-- 右侧：代码预览 -->
+          <div class="space-y-2">
+            <h3 class="text-lg font-semibold text-gray-700">预览代码:</h3>
+            <pre class="bg-gray-900 text-white rounded-lg p-4 overflow-x-auto text-sm"><code class="language-javascript" v-html="highlightedCode"></code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. 日志区 -->
+      <section class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-500 pb-2">操作日志</h2>
+        <div class="space-y-3">
+          <el-button size="small" @click="logs = []">清空日志</el-button>
+          <ul class="space-y-1 max-h-80 overflow-y-auto bg-gray-50 rounded p-4 font-mono text-sm">
+            <li 
+              v-for="(log, index) in logs" 
+              :key="index" 
+              :class="[
+                'py-1 px-2 rounded',
+                log.type === 'info' ? 'text-blue-700 bg-blue-50' : '',
+                log.type === 'success' ? 'text-green-700 bg-green-50' : '',
+                log.type === 'error' ? 'text-red-700 bg-red-50' : ''
+              ]"
+            >
+              [{{ log.time }}] {{ log.message }}
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+</template>
+
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import FilterPropsEditor from './components/FilterPropsEditor.vue'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -7,6 +259,7 @@ import 'highlight.js/styles/atom-one-dark.css'
 import {
   register,
   render,
+  renderAll,
   getRegisteredFilters,
   clearFilters,
   type FilterDefinition,
@@ -51,7 +304,17 @@ const newSubFilters = ref<Array<Partial<SubFilter>>>([])
 const addLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
   const time = new Date().toLocaleTimeString()
   logs.value.unshift({ time, message, type })
-  if (logs.value.length > 50) logs.value.pop()
+  if (logs.value.length > 100) {
+    logs.value.pop()
+  }
+}
+
+// 初始化
+const init = () => {
+  registeredFilters.value = getRegisteredFilters()
+  addLog('应用已初始化', 'info')
+  renderAll()
+  renderedFilters.value = registeredFilters.value.map(f => f.id)
 }
 
 // 注册示例过滤器
@@ -207,8 +470,8 @@ const onFilterTypeChange = (index: number, type: any) => {
 
 // 动态表单 - 创建过滤器
 const createFilter = () => {
-  if (!newFilterId.value.trim()) {
-    addLog('请输入过滤器ID', 'error')
+  if (!newFilterId.value) {
+    addLog('请输入过滤器 ID', 'error')
     return
   }
   
@@ -218,7 +481,7 @@ const createFilter = () => {
   }
   
   try {
-    const config: SubFilter[] = newSubFilters.value.map((sf: Partial<SubFilter>) => ({
+    const config = newSubFilters.value.map((sf: Partial<SubFilter>) => ({
       type: sf.type!,
       props: sf.props || {},
       in: sf.in || undefined,
@@ -238,7 +501,6 @@ const createFilter = () => {
     if (!renderedFilters.value.includes(newFilterId.value)) {
       renderedFilters.value.push(newFilterId.value)
     }
-    applyFilter(`url(#${newFilterId.value})`)
   } catch (error) {
     addLog(`创建过滤器失败: ${error}`, 'error')
   }
@@ -300,606 +562,14 @@ const previewCode = computed(() => {
 
 // 高亮后的代码
 const highlightedCode = computed(() => {
-  return hljs.highlight(previewCode.value, { language: 'javascript' }).value
+  try {
+    return hljs.highlight(previewCode.value, { language: 'javascript' }).value
+  } catch {
+    return previewCode.value
+  }
 })
 
-// 初始化
-const init = () => {
-  registeredFilters.value = getRegisteredFilters()
-  addLog('应用已加载', 'info')
-}
-
-init()
+onMounted(() => {
+  init()
+})
 </script>
-<template>
-  <div class="app">
-    <header class="header">
-      <h1>SVG Filter Factory Demo</h1>
-      <p>演示SVG过滤器的注册、渲染和动态创建 - 基于17种SVG过滤器类型</p>
-    </header>
-
-    <main class="main">
-      <!-- 1. 快速示例区 -->
-      <section class="demo-section">
-        <h2>快速示例</h2>
-        <div class="quick-demo">
-          <el-button type="primary" @click="registerSampleFilters">
-            注册示例过滤器
-          </el-button>
-          <el-button type="danger" @click="clearAllFilters">
-            清除所有过滤器
-          </el-button>
-          <div v-if="registeredFilters.length > 0" class="registered-filters">
-            <h3>已注册的过滤器：</h3>
-            <div class="filter-cards">
-              <div v-for="filter in registeredFilters" :key="filter.id" class="filter-card">
-                <div class="filter-card-header">
-                  <strong class="filter-id">{{ filter.id }}</strong>
-                  <span class="filter-count">{{ filter.config.length }} 个子过滤器</span>
-                </div>
-                <div class="filter-card-details">
-                  <div v-for="(sub, idx) in filter.config" :key="idx" class="sub-filter-detail">
-                    <span class="sub-filter-index">{{ idx + 1 }}.</span>
-                    <span class="sub-filter-type">{{ sub.type }}</span>
-                    <span v-if="sub.result" class="sub-filter-attr">→ {{ sub.result }}</span>
-                    <span v-if="sub.in" class="sub-filter-attr">(in: {{ sub.in }})</span>
-                  </div>
-                </div>
-                <div class="filter-card-actions">
-                  <el-button type="success" size="small" @click="renderAndApplyFilter(filter.id)">
-                    渲染并应用
-                  </el-button>
-                  <el-button type="info" size="small" @click="renderFilter(filter.id)">
-                    仅渲染
-                  </el-button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. 效果预览区 -->
-      <section class="demo-section">
-        <h2>效果预览</h2>
-        <div class="preview-container">
-          <div class="filter-controls">
-            <strong>当前应用：</strong> 
-            <code>{{ currentFilter || '无' }}</code>
-            <div class="filter-selector">
-              <el-button 
-                @click="applyFilter('')" 
-                :type="currentFilter === '' ? 'primary' : ''"
-              >
-                无过滤器
-              </el-button>
-              <el-button 
-                v-for="filter in renderedFilters" 
-                :key="filter"
-                @click="applyFilter(`url(#${filter})`)" 
-                :type="currentFilter === `url(#${filter})` ? 'primary' : ''"
-              >
-                {{ filter }}
-              </el-button>
-            </div>
-          </div>
-
-          <div class="preview-items">
-            <!-- SVG图形 -->
-            <div class="preview-item">
-              <h4>SVG 图形</h4>
-              <div class="preview-box">
-                <svg width="100%" height="200" viewBox="0 0 200 200">
-                  <defs>
-                    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-                      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
-                    </linearGradient>
-                  </defs>
-                  <circle 
-                    cx="100" 
-                    cy="100" 
-                    r="60" 
-                    fill="url(#gradient1)"
-                    :style="{ filter: currentFilter ? currentFilter : 'none' }"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <!-- 文本 -->
-            <div class="preview-item">
-              <h4>文本</h4>
-              <div class="preview-box">
-                <div style="display: flex; justify-content: center; align-items: center; height:200px;width:100%;">
-                  <span :style="{ filter: currentFilter ? currentFilter : 'none',color:'#9b4607',fontSize:'40px',fontWeight:'bold' }">FILTER</span>
-                </div>
-                
-              </div>
-            </div>
-
-            <!-- 图片 -->
-            <div class="preview-item">
-              <h4>图片</h4>
-              <div class="preview-box">
-                <div style="display: flex; justify-content: center; align-items: center; height:200px;width:100%;">
-                  <img 
-                    src="https://picsum.photos/160/160" 
-                    :style="{filter:currentFilter ? currentFilter : 'none'}"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. 动态表单创建过滤器 -->
-      <section class="demo-section">
-        <h2>动态创建过滤器</h2>
-        <div class="filter-builder">
-          <div class="builder-controls">
-            <div class="form-group">
-              <label>过滤器 ID:</label>
-              <el-input v-model="newFilterId" type="text" placeholder="例如: my-custom-filter" />
-            </div>
-            
-            <div class="sub-filters">
-              <h3>子过滤器列表：</h3>
-              <div v-for="(subFilter, index) in newSubFilters" :key="index" class="sub-filter-item">
-                <div class="sub-filter-header">
-                  <span>子过滤器 {{ index + 1 }}</span>
-                  <el-button type="danger" size="small" @click="removeSubFilter(index)">删除</el-button>
-                </div>
-                
-                <div class="form-group">
-                  <label>类型:</label>
-                  <el-select 
-                    v-model="subFilter.type" 
-                    @change="onFilterTypeChange(index, subFilter.type)" 
-                    placeholder="选择类型..."
-                    :options="filterTypeOptions"
-                  />
-                </div>
-                
-                <div class="form-group">
-                  <label>别名 (result):</label>
-                  <el-input v-model="subFilter.result" type="text" placeholder="用于后续混合引用，例如: blur" />
-                  <small class="field-desc">为此过滤器效果定义一个别名，可在后续过滤器中通过 in 引用</small>
-                </div>
-                
-                <!-- 动态属性编辑器 -->
-                <div v-if="subFilter.type" class="props-editor">
-                  <FilterPropsEditor 
-                    :type="subFilter.type" 
-                    v-model="subFilter.props"
-                    :available-aliases="getAvailableAliases(index)"
-                  />
-                </div>
-              </div>
-              
-              <el-button type="info" @click="addSubFilter">
-                + 添加子过滤器
-              </el-button>
-            </div>
-            
-            <div class="builder-actions">
-              <el-button type="success" @click="createFilter">
-                创建并注册过滤器
-              </el-button>
-              <el-button @click="resetBuilder">
-                重置表单
-              </el-button>
-            </div>
-          </div>
-          
-          <div class="builder-preview">
-            <h3>预览代码:</h3>
-            <pre class="code-preview"><code class="language-javascript" v-html="highlightedCode"></code></pre>
-          </div>
-        </div>
-      </section>
-
-      <!-- 4. 日志区 -->
-      <section class="demo-section">
-        <h2>操作日志</h2>
-        <div class="logs">
-          <el-button size="small" @click="logs = []">清空日志</el-button>
-          <ul>
-            <li v-for="(log, index) in logs" :key="index" :class="'log-' + log.type">
-              [{{ log.time }}] {{ log.message }}
-            </li>
-          </ul>
-        </div>
-      </section>
-    </main>
-  </div>
-</template>
-
-<style scoped>
-* {
-  box-sizing: border-box;
-}
-
-.app {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
-  background: #f5f5f5;
-}
-
-.header {
-  text-align: center;
-  padding: 30px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 10px;
-  margin-bottom: 30px;
-}
-
-.header h1 {
-  margin: 0 0 10px 0;
-  font-size: 2.5em;
-}
-
-.header p {
-  margin: 0;
-  opacity: 0.9;
-}
-
-.main {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.demo-section {
-  background: white;
-  padding: 25px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.demo-section h2 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  color: #333;
-  border-bottom: 2px solid #667eea;
-  padding-bottom: 10px;
-}
-
-/* 保留一些自定义按钮间距 */
-.quick-demo .el-button {
-  margin-right: 10px;
-  margin-bottom: 10px;
-}
-
-.registered-filters {
-  margin-top: 20px;
-}
-
-.filter-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.filter-card {
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  padding: 18px;
-  border-radius: 8px;
-  border: 2px solid #e0e0e0;
-  transition: all 0.3s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.filter-card:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-  transform: translateY(-2px);
-}
-
-.filter-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #667eea;
-}
-
-.filter-id {
-  font-size: 16px;
-  color: #667eea;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-.filter-count {
-  font-size: 12px;
-  color: #666;
-  background: #e8eaf6;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-weight: 500;
-}
-
-.filter-card-details {
-  margin: 12px 0;
-  padding: 10px;
-  background: rgba(102, 126, 234, 0.04);
-  border-radius: 5px;
-  font-size: 13px;
-}
-
-.sub-filter-detail {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-  line-height: 1.6;
-}
-
-.sub-filter-index {
-  color: #999;
-  font-weight: 600;
-  min-width: 20px;
-}
-
-.sub-filter-type {
-  color: #333;
-  font-weight: 600;
-  font-family: 'Consolas', monospace;
-}
-
-.sub-filter-attr {
-  color: #666;
-  font-size: 12px;
-  font-family: 'Consolas', monospace;
-}
-
-.filter-card-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.filter-card-actions .el-button {
-  flex: 1;
-}
-
-/* 效果预览布局 */
-.preview-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.preview-items {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  width: 100%;
-}
-
-.preview-item {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.preview-item h4 {
-  margin: 0;
-  font-size: 16px;
-  color: #333;
-  font-weight: 600;
-  text-align: center;
-  padding: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 8px 8px 0 0;
-}
-
-.preview-box {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e0e7ef 100%);
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  min-height: 200px;
-}
-
-.preview-box svg {
-  background: white;
-  border-radius: 5px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.filter-controls {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 10px;
-  border: 1px solid #e0e0e0;
-  width: 100%;
-}
-
-.filter-controls h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  color: #333;
-  font-size: 18px;
-  border-bottom: 2px solid #667eea;
-  padding-bottom: 8px;
-}
-
-.filter-selector {
-  display: flex;
-  flex-wrap: wrap;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 10px;
-  background: white;
-  border-radius: 5px;
-  margin-bottom: 15px;
-}
-
-.filter-selector .el-button {
-  font-family: 'Consolas', monospace;
-  justify-content: flex-start;
-}
-
-.current-filter-info {
-  padding: 12px;
-  background: #e8eaf6;
-  border-radius: 5px;
-  font-size: 14px;
-  margin: 0;
-}
-
-.current-filter-info code {
-  background: white;
-  padding: 4px 8px;
-  border-radius: 3px;
-  font-family: 'Consolas', monospace;
-  color: #667eea;
-  font-weight: 600;
-}
-
-/* 动态表单样式 */
-.filter-builder {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 600;
-  color: #555;
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-/* Element Plus 组件全宽 */
-.form-group :deep(.el-input),
-.form-group :deep(.el-select) {
-  width: 100%;
-}
-
-.field-desc {
-  display: block;
-  color: #666;
-  font-size: 12px;
-  margin-top: 4px;
-  line-height: 1.4;
-}
-
-.sub-filters {
-  margin-top: 20px;
-}
-
-.sub-filter-item {
-  background: #f8f9fa;
-  padding: 15px;
-  margin-bottom: 15px;
-  border-radius: 5px;
-  border: 1px solid #e0e0e0;
-}
-
-.sub-filter-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ddd;
-  font-weight: 600;
-}
-
-.props-editor {
-  margin-top: 15px;
-}
-
-.builder-actions {
-  margin-top: 20px;
-  display: flex;
-  gap: 10px;
-}
-
-.builder-preview {
-  position: sticky;
-  top: 20px;
-  height: fit-content;
-}
-
-.code-preview {
-  margin: 0;
-  padding: 0;
-  border-radius: 8px;
-  overflow: hidden;
-  max-height: 600px;
-  overflow-y: auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.code-preview code {
-  display: block;
-  padding: 20px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
-  background: #282c34;
-  color: #abb2bf;
-  overflow-x: auto;
-}
-
-/* 日志样式 */
-.logs ul {
-  list-style: none;
-  padding: 0;
-  max-height: 300px;
-  overflow-y: auto;
-  background: #f8f9fa;
-  padding: 15px;
-  border-radius: 5px;
-}
-
-.logs li {
-  padding: 8px 12px;
-  margin-bottom: 5px;
-  border-radius: 3px;
-  font-family: 'Consolas', monospace;
-  font-size: 13px;
-}
-
-.log-info {
-  background: #e3f2fd;
-  color: #1976d2;
-}
-
-.log-success {
-  background: #e8f5e9;
-  color: #388e3c;
-}
-
-.log-error {
-  background: #ffebee;
-  color: #c62828;
-}
-</style>

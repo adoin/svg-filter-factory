@@ -1,5 +1,5 @@
 <template>
-  <div class="props-editor">
+  <div class="p-3 bg-gray-50 rounded">
     <!-- feGaussianBlur -->
     <template v-if="type === 'feGaussianBlur'">
       <el-row :gutter="10">
@@ -103,13 +103,15 @@
 
     <!-- feComponentTransfer -->
     <template v-else-if="type === 'feComponentTransfer'">
-      <el-text type="primary" size="small" style="display: block; margin-bottom: 10px;">
-        配置 RGBA 四个颜色通道的传输函数
-      </el-text>
+      <div class="mb-3">
+        <el-text type="primary" size="small">
+          配置 RGBA 四个颜色通道的传输函数
+        </el-text>
+      </div>
       
       <!-- R 通道 -->
-      <div class="channel-config">
-        <h4>R 通道 (红色)</h4>
+      <div class="p-4 mb-4 bg-white border border-gray-200 rounded">
+        <h4 class="m-0 mb-2.5 text-blue-500 text-sm font-semibold">R 通道 (红色)</h4>
         <el-form-item label="函数类型">
           <el-select 
             v-model="localProps.funcR.type" 
@@ -125,8 +127,8 @@
       </div>
 
       <!-- G 通道 -->
-      <div class="channel-config">
-        <h4>G 通道 (绿色)</h4>
+      <div class="p-4 mb-4 bg-white border border-gray-200 rounded">
+        <h4 class="m-0 mb-2.5 text-blue-500 text-sm font-semibold">G 通道 (绿色)</h4>
         <el-form-item label="函数类型">
           <el-select 
             v-model="localProps.funcG.type" 
@@ -142,8 +144,8 @@
       </div>
 
       <!-- B 通道 -->
-      <div class="channel-config">
-        <h4>B 通道 (蓝色)</h4>
+      <div class="p-4 mb-4 bg-white border border-gray-200 rounded">
+        <h4 class="m-0 mb-2.5 text-blue-500 text-sm font-semibold">B 通道 (蓝色)</h4>
         <el-form-item label="函数类型">
           <el-select 
             v-model="localProps.funcB.type" 
@@ -159,8 +161,8 @@
       </div>
 
       <!-- A 通道 -->
-      <div class="channel-config">
-        <h4>A 通道 (透明度)</h4>
+      <div class="p-4 mb-4 bg-white border border-gray-200 rounded">
+        <h4 class="m-0 mb-2.5 text-blue-500 text-sm font-semibold">A 通道 (透明度)</h4>
         <el-form-item label="函数类型">
           <el-select 
             v-model="localProps.funcA.type" 
@@ -383,25 +385,3 @@ const getChannelParamsComponent = (channel: 'funcR' | 'funcG' | 'funcB' | 'funcA
 }
 </script>
 
-<style scoped>
-.props-editor {
-  padding: 10px;
-  background: #f9f9f9;
-  border-radius: 4px;
-}
-
-.channel-config {
-  padding: 15px;
-  margin-bottom: 15px;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-}
-
-.channel-config h4 {
-  margin: 0 0 10px 0;
-  color: #409eff;
-  font-size: 14px;
-  font-weight: 600;
-}
-</style>
