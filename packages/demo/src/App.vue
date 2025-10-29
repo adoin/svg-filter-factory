@@ -55,6 +55,16 @@
                       仅渲染
                     </el-button>
                   </div>
+                  <div class="mt-2 flex gap-2">
+                    <el-button type="primary" size="small" class="flex-1" @click="copyFilterToBuilder(filter)">
+                      <span class="i-carbon-copy mr-1"></span>
+                      复制
+                    </el-button>
+                    <el-button type="danger" size="small" class="flex-1" @click="deleteFilterById(filter.id)">
+                      <span class="i-carbon-trash-can mr-1"></span>
+                      删除
+                    </el-button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -178,7 +188,7 @@
       </section>
 
       <!-- 3. 动态表单创建过滤器 -->
-      <section class="bg-white rounded-xl shadow-md p-6">
+      <section id="filter-builder" class="bg-white rounded-xl shadow-md p-6">
         <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-500 pb-2">动态创建过滤器</h2>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- 左侧：表单 -->
@@ -246,7 +256,7 @@
           <div class="space-y-2">
             <div class="flex justify-between items-center">
               <h3 class="text-lg font-semibold text-gray-700">预览代码:</h3>
-              <el-button size="small" @click="copyCode">
+              <el-button type="primary" size="small" @click="copyCode">
                 <span class="i-carbon-copy mr-1"></span>
                 复制代码
               </el-button>
@@ -262,6 +272,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import FilterPropsEditor from './components/FilterPropsEditor.vue'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -272,6 +283,7 @@ import {
   renderAll,
   getRegisteredFilters,
   clearFilters,
+  deleteFilter,
   type FilterDefinition,
   type SubFilter
 } from '@svg-filter-factory/core'
@@ -444,7 +456,7 @@ const getDefaultSubFilter = (type: string = 'feGaussianBlur') => {
     },
     feTurbulence: { props: { type: 'fractalNoise', baseFrequency: 0.05, numOctaves: 1 }, result: 'turbulence' },
     feBlend: { props: { mode: 'normal', in: 'SourceGraphic', in2: 'SourceAlpha' }, result: 'blend' },
-    feComposite: { props: { operator: 'over', in: 'SourceGraphic', in2: 'SourceGraphic' }, result: 'composite' },
+    feComposite: { props: { operator: 'over', in: 'SourceGraphic', in2: 'SourceAlpha' }, result: 'composite' },
     feMerge: { props: { inputs: ['SourceGraphic'] }, result: 'merge' },
     feMorphology: { props: { operator: 'erode', radius: '0,0' }, result: 'morphology' },
     feConvolveMatrix: { props: { order: 3, kernelMatrix: '1 0 0 0 1 0 0 0 1', bias: 0 }, result: 'convolve' },
@@ -511,6 +523,9 @@ const createFilter = () => {
     if (!renderedFilters.value.includes(newFilterId.value)) {
       renderedFilters.value.push(newFilterId.value)
     }
+    
+    // 清空表单
+    resetBuilder()
   } catch (error) {
     addLog(`创建过滤器失败: ${error}`, 'error')
   }
@@ -521,6 +536,67 @@ const resetBuilder = () => {
   newFilterId.value = ''
   newSubFilters.value = []
   addLog('表单已重置', 'info')
+}
+
+// 复制过滤器到创建区域
+const copyFilterToBuilder = (filter: FilterDefinition) => {
+  try {
+    // 清空 ID，保留配置
+    newFilterId.value = ''
+    
+    // 深拷贝配置到创建区域
+    newSubFilters.value = filter.config.map(sub => ({
+      type: sub.type,
+      props: { ...sub.props },
+      in: sub.in,
+      result: sub.result
+    })) as Partial<SubFilter>[]
+    
+    addLog(`已复制过滤器配置到创建区域，请修改 ID 后注册`, 'success')
+    ElMessage.success('已复制到创建区域！')
+    
+    // 滚动到创建区域
+    const builderElement = document.querySelector('#filter-builder')
+    if (builderElement) {
+      builderElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  } catch (error) {
+    addLog(`复制失败: ${error}`, 'error')
+    ElMessage.error('复制失败，请重试')
+  }
+}
+
+// 删除单个过滤器
+const deleteFilterById = (id: string) => {
+  ElMessageBox.confirm(
+    `确定要删除过滤器 "${id}" 吗？此操作不可恢复。`,
+    '删除确认',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(() => {
+    try {
+      deleteFilter(id)
+      registeredFilters.value = getRegisteredFilters()
+      
+      // 从已渲染列表中移除
+      const index = renderedFilters.value.indexOf(id)
+      if (index > -1) {
+        renderedFilters.value.splice(index, 1)
+      }
+      
+      addLog(`已删除过滤器: ${id}`, 'success')
+      ElMessage.success(`过滤器 "${id}" 已删除`)
+    } catch (error) {
+      addLog(`删除过滤器失败: ${error}`, 'error')
+      ElMessage.error('删除失败，请重试')
+    }
+  }).catch(() => {
+    // 用户取消删除
+    addLog(`取消删除过滤器: ${id}`, 'info')
+  })
 }
 
 // 获取当前子过滤器之前已定义的所有别名
@@ -584,8 +660,11 @@ const copyCode = async () => {
   try {
     await navigator.clipboard.writeText(previewCode.value)
     addLog('代码已复制到剪贴板', 'success')
+    // 使用 Element Plus 消息提示
+    ElMessage.success('代码已复制到剪贴板！')
   } catch (error) {
     addLog('复制失败: ' + error, 'error')
+    ElMessage.error('复制失败，请重试')
   }
 }
 

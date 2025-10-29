@@ -520,6 +520,26 @@ export function unregister(filterId: string): void {
 /**
  * Clear all registered filters
  */
+export function deleteFilter(id: string): void {
+  // Remove from localStorage
+  removeFilterConfig(id);
+  
+  // Remove rendered SVG element
+  const filterElement = document.getElementById(id);
+  if (filterElement) {
+    filterElement.remove();
+  }
+  
+  // If no filters left, remove the container
+  const svgDefs = document.getElementById('__svg_filter_factory_defs');
+  if (svgDefs && svgDefs.children.length === 0) {
+    const svgContainer = document.getElementById('__svg_filter_factory_container');
+    if (svgContainer) {
+      svgContainer.remove();
+    }
+  }
+}
+
 export function clearFilters(): void {
   const filters = getRegisteredFilters();
   filters.forEach(filter => {

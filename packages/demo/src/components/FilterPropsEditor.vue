@@ -342,6 +342,93 @@
       </el-text>
     </template>
 
+    <!-- feComposite -->
+    <template v-else-if="type === 'feComposite'">
+      <el-form-item label="合成操作">
+        <el-select 
+          v-model="localProps.operator" 
+          @change="onCompositeOperatorChange"
+          :options="compositeOperators"
+        />
+      </el-form-item>
+      
+      <el-row :gutter="10">
+        <el-col :span="24">
+          <el-form-item label="输入源 1">
+            <el-select 
+              v-model="localProps.in" 
+              @change="emitUpdate"
+              :options="getInputOptions()"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="输入源 2">
+            <el-select 
+              v-model="localProps.in2" 
+              @change="emitUpdate"
+              :options="getInputOptions()"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      
+      <!-- arithmetic 模式需要额外的 k1-k4 参数 -->
+      <div v-if="localProps.operator === 'arithmetic'" class="mt-3">
+        <el-text type="warning" size="small" class="block mb-2">
+          算术合成公式: result = k1*i1*i2 + k2*i1 + k3*i2 + k4
+        </el-text>
+        <el-row :gutter="10">
+          <el-col :span="12">
+            <el-form-item label="k1">
+              <el-input-number 
+                v-model="localProps.k1" 
+                :step="0.1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="k2">
+              <el-input-number 
+                v-model="localProps.k2" 
+                :step="0.1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="10">
+          <el-col :span="12">
+            <el-form-item label="k3">
+              <el-input-number 
+                v-model="localProps.k3" 
+                :step="0.1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="k4">
+              <el-input-number 
+                v-model="localProps.k4" 
+                :step="0.1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </div>
+      
+      <el-text type="info" size="small">
+        {{ getCompositeDescription(localProps.operator) }}
+      </el-text>
+    </template>
+
     <!-- 其他过滤器类型暂不在 FilterPropsEditor 中实现 -->
     <template v-else>
       <el-text type="info">该过滤器类型暂未在此组件实现</el-text>
@@ -395,6 +482,49 @@ const blendModes = [
   { label: 'difference - 差值', value: 'difference' },
   { label: 'exclusion - 排除', value: 'exclusion' }
 ]
+
+// 合成操作选项
+const compositeOperators = [
+  { label: 'over - 覆盖（in1 在 in2 上方）', value: 'over' },
+  { label: 'in - 内部（保留 in1 与 in2 重叠部分）', value: 'in' },
+  { label: 'out - 外部（保留 in1 不与 in2 重叠部分）', value: 'out' },
+  { label: 'atop - 顶部（in1 覆盖在 in2 上，保留 in2 形状）', value: 'atop' },
+  { label: 'xor - 异或（保留不重叠部分）', value: 'xor' },
+  { label: 'lighter - 相加', value: 'lighter' },
+  { label: 'arithmetic - 算术运算', value: 'arithmetic' }
+]
+
+// 获取合成操作的描述
+const getCompositeDescription = (operator: string) => {
+  const descriptions: Record<string, string> = {
+    'over': '将 in1 覆盖在 in2 上方',
+    'in': '只保留 in1 与 in2 重叠的部分',
+    'out': '只保留 in1 不与 in2 重叠的部分',
+    'atop': 'in1 覆盖在 in2 上，但保留 in2 的形状',
+    'xor': '只保留 in1 和 in2 不重叠的部分',
+    'lighter': '将 in1 和 in2 相加',
+    'arithmetic': '使用算术公式进行自定义合成'
+  }
+  return descriptions[operator] || '将两个输入源进行合成操作'
+}
+
+// 合成操作改变时的处理
+const onCompositeOperatorChange = () => {
+  // 如果切换到 arithmetic，初始化 k 值
+  if (localProps.value.operator === 'arithmetic') {
+    if (localProps.value.k1 === undefined) localProps.value.k1 = 0
+    if (localProps.value.k2 === undefined) localProps.value.k2 = 1
+    if (localProps.value.k3 === undefined) localProps.value.k3 = 0
+    if (localProps.value.k4 === undefined) localProps.value.k4 = 0
+  } else {
+    // 切换到其他操作时，删除 k 值
+    delete localProps.value.k1
+    delete localProps.value.k2
+    delete localProps.value.k3
+    delete localProps.value.k4
+  }
+  emitUpdate()
+}
 
 // 获取输入源选项（包括 SourceGraphic、SourceAlpha 和之前的 result 别名）
 const getInputOptions = () => {
