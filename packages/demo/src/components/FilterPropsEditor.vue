@@ -101,6 +101,33 @@
       <el-text type="info" size="small">创建阴影效果：dx/dy 控制偏移，stdDeviation 控制模糊度</el-text>
     </template>
 
+    <!-- feFlood -->
+    <template v-else-if="type === 'feFlood'">
+      <el-row :gutter="10">
+        <el-col :span="12">
+          <el-form-item label="填充颜色">
+            <el-color-picker 
+              v-model="localProps.floodColor" 
+              @change="emitUpdate"
+              show-alpha
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="不透明度">
+            <el-slider 
+              v-model="localProps.floodOpacity" 
+              :min="0" 
+              :max="1" 
+              :step="0.01"
+              @change="emitUpdate"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-text type="info" size="small">用指定颜色和透明度填充整个滤镜区域</el-text>
+    </template>
+
     <!-- feColorMatrix -->
     <template v-else-if="type === 'feColorMatrix'">
       <el-form-item label="类型">
@@ -279,6 +306,42 @@
       </div>
     </template>
 
+    <!-- feBlend -->
+    <template v-else-if="type === 'feBlend'">
+      <el-form-item label="混合模式">
+        <el-select 
+          v-model="localProps.mode" 
+          @change="emitUpdate"
+          :options="blendModes"
+        />
+      </el-form-item>
+      
+      <el-row :gutter="10">
+        <el-col :span="24">
+          <el-form-item label="输入源 1">
+            <el-select 
+              v-model="localProps.in" 
+              @change="emitUpdate"
+              :options="getInputOptions()"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="输入源 2">
+            <el-select 
+              v-model="localProps.in2" 
+              @change="emitUpdate"
+              :options="getInputOptions()"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      
+      <el-text type="info" size="small">
+        将两个输入源按指定的混合模式进行混合
+      </el-text>
+    </template>
+
     <!-- 其他过滤器类型暂不在 FilterPropsEditor 中实现 -->
     <template v-else>
       <el-text type="info">该过滤器类型暂未在此组件实现</el-text>
@@ -317,6 +380,45 @@ const colorMatrixTypes = [
   { label: '亮度转Alpha (luminanceToAlpha)', value: 'luminanceToAlpha' },
   { label: '自定义矩阵 (matrix)', value: 'matrix' }
 ]
+
+// 混合模式选项
+const blendModes = [
+  { label: 'normal - 正常', value: 'normal' },
+  { label: 'multiply - 正片叠底', value: 'multiply' },
+  { label: 'screen - 滤色', value: 'screen' },
+  { label: 'darken - 变暗', value: 'darken' },
+  { label: 'lighten - 变亮', value: 'lighten' },
+  { label: 'color-dodge - 颜色减淡', value: 'color-dodge' },
+  { label: 'color-burn - 颜色加深', value: 'color-burn' },
+  { label: 'hard-light - 强光', value: 'hard-light' },
+  { label: 'soft-light - 柔光', value: 'soft-light' },
+  { label: 'difference - 差值', value: 'difference' },
+  { label: 'exclusion - 排除', value: 'exclusion' }
+]
+
+// 获取输入源选项（包括 SourceGraphic、SourceAlpha 和之前的 result 别名）
+const getInputOptions = () => {
+  if (!props.availableAliases || props.availableAliases.length === 0) {
+    return [
+      { label: 'SourceGraphic - 原始图像', value: 'SourceGraphic' },
+      { label: 'SourceAlpha - 原始Alpha通道', value: 'SourceAlpha' }
+    ]
+  }
+  
+  // 为每个别名添加友好的标签说明
+  return props.availableAliases.map(alias => {
+    // 内置固定输入源
+    if (alias === 'SourceGraphic') return { label: 'SourceGraphic - 原始图像', value: alias }
+    if (alias === 'SourceAlpha') return { label: 'SourceAlpha - 原始Alpha通道', value: alias }
+    if (alias === 'BackgroundImage') return { label: 'BackgroundImage - 背景图像', value: alias }
+    if (alias === 'BackgroundAlpha') return { label: 'BackgroundAlpha - 背景Alpha通道', value: alias }
+    if (alias === 'FillPaint') return { label: 'FillPaint - 填充绘制区域', value: alias }
+    if (alias === 'StrokePaint') return { label: 'StrokePaint - 描边绘制区域', value: alias }
+    
+    // 自定义 result 别名（前面子过滤器的输出）
+    return { label: `${alias} - 之前的结果`, value: alias }
+  })
+}
 
 // 形态学操作类型选项
 const morphologyOperators = [

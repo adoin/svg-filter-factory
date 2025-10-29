@@ -244,7 +244,13 @@
           
           <!-- 右侧：代码预览 -->
           <div class="space-y-2">
-            <h3 class="text-lg font-semibold text-gray-700">预览代码:</h3>
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-gray-700">预览代码:</h3>
+              <el-button size="small" @click="copyCode">
+                <span class="i-carbon-copy mr-1"></span>
+                复制代码
+              </el-button>
+            </div>
             <pre class="bg-gray-900 text-white rounded-lg p-4 overflow-x-auto text-sm"><code class="language-javascript" v-html="highlightedCode"></code></pre>
           </div>
         </div>
@@ -281,7 +287,7 @@ const filterTypeOptions = [
   { label: '偏移 (feOffset)', value: 'feOffset' },
   { label: '颜色矩阵 (feColorMatrix)', value: 'feColorMatrix' },
   { label: '组件转换 (feComponentTransfer)', value: 'feComponentTransfer' },
-  { label: '填充 (feFlood)', value: 'feFlood' },
+  { label: '填充 (feFlood-请勿单独使用)', value: 'feFlood' },
   { label: '混合 (feBlend)', value: 'feBlend' },
   { label: '合成 (feComposite)', value: 'feComposite' },
   { label: '合并 (feMerge)', value: 'feMerge' },
@@ -437,7 +443,7 @@ const getDefaultSubFilter = (type: string = 'feGaussianBlur') => {
       result: 'transfer' 
     },
     feTurbulence: { props: { type: 'fractalNoise', baseFrequency: 0.05, numOctaves: 1 }, result: 'turbulence' },
-    feBlend: { props: { mode: 'normal', in: 'SourceGraphic', in2: 'SourceGraphic' }, result: 'blend' },
+    feBlend: { props: { mode: 'normal', in: 'SourceGraphic', in2: 'SourceAlpha' }, result: 'blend' },
     feComposite: { props: { operator: 'over', in: 'SourceGraphic', in2: 'SourceGraphic' }, result: 'composite' },
     feMerge: { props: { inputs: ['SourceGraphic'] }, result: 'merge' },
     feMorphology: { props: { operator: 'erode', radius: '0,0' }, result: 'morphology' },
@@ -572,6 +578,16 @@ const highlightedCode = computed(() => {
     return previewCode.value
   }
 })
+
+// 复制代码
+const copyCode = async () => {
+  try {
+    await navigator.clipboard.writeText(previewCode.value)
+    addLog('代码已复制到剪贴板', 'success')
+  } catch (error) {
+    addLog('复制失败: ' + error, 'error')
+  }
+}
 
 onMounted(() => {
   init()
