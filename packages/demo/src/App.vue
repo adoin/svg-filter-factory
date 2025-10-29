@@ -438,11 +438,33 @@ const registerSampleFilters = () => {
             }
           }
         ]
+      },
+      {
+        id: 'sample-tile',
+        config: [
+          {
+            type: 'feTurbulence',
+            props: {
+              type: 'fractalNoise',
+              baseFrequency: '0.1,0.1',
+              numOctaves: 2,
+              seed: 1
+            },
+            result: 'pattern'
+          },
+          {
+            type: 'feTile',
+            props: {
+              in: 'pattern'
+            },
+            result: 'tile'
+          }
+        ]
       }
     ])
     
     registeredFilters.value = getRegisteredFilters()
-    addLog('成功注册5个示例过滤器', 'success')
+    addLog('成功注册6个示例过滤器', 'success')
   } catch (error) {
     addLog('注册示例过滤器失败: ' + error, 'error')
   }
@@ -515,8 +537,8 @@ const getDefaultSubFilter = (type: string = 'feGaussianBlur') => {
     feMorphology: { props: { in: 'SourceGraphic', operator: 'erode', radius: '0,0' }, result: 'morphology' },
     feConvolveMatrix: { props: { in: 'SourceGraphic', order: 3, kernelMatrix: '0 -1 0 -1 5 -1 0 -1 0', bias: 0, edgeMode: 'duplicate' }, result: 'convolve' },
     feDisplacementMap: { props: { scale: 50, xChannelSelector: 'R', yChannelSelector: 'G', in: 'SourceGraphic', in2: 'SourceGraphic' }, result: 'displace' },
-    feSpecularLighting: { props: { in: 'SourceGraphic', surfaceScale: 1, specularConstant: 1, specularExponent: 20, lightingColor: '#ffffff' }, result: 'specular' },
-    feDiffuseLighting: { props: { in: 'SourceGraphic', surfaceScale: 1, diffuseConstant: 1, lightingColor: '#ffffff' }, result: 'diffuse' },
+    feSpecularLighting: { props: { in: 'SourceGraphic', lightType: 'distant', azimuth: 45, elevation: 30, surfaceScale: 1, specularConstant: 1, specularExponent: 20, lightingColor: '#ffffff' }, result: 'specular' },
+    feDiffuseLighting: { props: { in: 'SourceGraphic', lightType: 'distant', azimuth: 45, elevation: 30, surfaceScale: 1, diffuseConstant: 1, lightingColor: '#ffffff' }, result: 'diffuse' },
     feTile: { props: { in: 'SourceGraphic' }, result: 'tile' },
     feImage: { props: { href: '', align: 'xMidYMid', meetOrSlice: 'meet' }, result: 'image' }
   }
@@ -718,6 +740,25 @@ const previewFilterId = computed(() => {
   return newFilterId.value || 'preview-filter'
 })
 
+// 生成预览光源元素
+const generatePreviewLightElement = (props: any) => {
+  const lightType = props.lightType || 'distant'
+  
+  switch (lightType) {
+    case 'distant':
+      return `<feDistantLight azimuth="${props.azimuth || 45}" elevation="${props.elevation || 30}" />`
+    
+    case 'point':
+      return `<fePointLight x="${props.x || 100}" y="${props.y || 100}" z="${props.z || 200}" />`
+    
+    case 'spot':
+      return `<feSpotLight x="${props.x || 100}" y="${props.y || 100}" z="${props.z || 200}" pointsAtX="${props.x || 100}" pointsAtY="${props.y || 100}" pointsAtZ="${props.pointsAtZ || 0}" specularExponent="${props.specularExponent || 1}" limitingConeAngle="${props.limitingConeAngle || 45}" />`
+    
+    default:
+      return `<feDistantLight azimuth="45" elevation="30" />`
+  }
+}
+
 // 生成预览 SVG 过滤器
 const previewFilterSvg = computed(() => {
   if (newSubFilters.value.length === 0) {
@@ -777,6 +818,59 @@ const previewFilterSvg = computed(() => {
         const meetOrSlice = props.meetOrSlice || 'meet'
         const preserveAspectRatio = align === 'none' ? 'none' : `${align} ${meetOrSlice}`
         return `<feImage ${defaultRegion} href="${props.href || ''}" preserveAspectRatio="${preserveAspectRatio}"${result} />`
+      }
+      
+      case 'feTile': {
+        // feTile 需要先创建一个图案作为输入源
+        const patternId = 'preview-pattern'
+        return `
+          <feTurbulence ${defaultRegion} type="fractalNoise" baseFrequency="0.1,0.1" numOctaves="2" seed="1" result="${patternId}" />
+          <feTile ${defaultRegion} in="${patternId}"${result} />`
+      }
+      
+      case 'feComponentTransfer': {
+        const funcR = props.funcR || { type: 'identity' }
+        const funcG = props.funcG || { type: 'identity' }
+        const funcB = props.funcB || { type: 'identity' }
+        const funcA = props.funcA || { type: 'identity' }
+        
+        const generateFuncElement = (func: any, channel: string) => {
+          const attrs = []
+          if (func.type === 'table' && func.tableValues) {
+            attrs.push(`tableValues="${func.tableValues}"`)
+          } else if (func.type === 'discrete' && func.tableValues) {
+            attrs.push(`tableValues="${func.tableValues}"`)
+          } else if (func.type === 'linear') {
+            if (func.slope !== undefined) attrs.push(`slope="${func.slope}"`)
+            if (func.intercept !== undefined) attrs.push(`intercept="${func.intercept}"`)
+          } else if (func.type === 'gamma') {
+            if (func.amplitude !== undefined) attrs.push(`amplitude="${func.amplitude}"`)
+            if (func.exponent !== undefined) attrs.push(`exponent="${func.exponent}"`)
+            if (func.offset !== undefined) attrs.push(`offset="${func.offset}"`)
+          }
+          
+          return `<feFunc${channel} type="${func.type}"${attrs.length ? ' ' + attrs.join(' ') : ''} />`
+        }
+        
+        return `<feComponentTransfer ${defaultRegion} in="${defaultIn}"${result}>
+          ${generateFuncElement(funcR, 'R')}
+          ${generateFuncElement(funcG, 'G')}
+          ${generateFuncElement(funcB, 'B')}
+          ${generateFuncElement(funcA, 'A')}
+        </feComponentTransfer>`
+      }
+      
+      case 'feDisplacementMap':
+        return `<feDisplacementMap ${defaultRegion} in="${props.in || 'SourceGraphic'}" in2="${props.in2 || 'SourceGraphic'}" scale="${props.scale || 0}" xChannelSelector="${props.xChannelSelector || 'R'}" yChannelSelector="${props.yChannelSelector || 'G'}"${result} />`
+      
+      case 'feSpecularLighting': {
+        const lightElement = generatePreviewLightElement(props)
+        return `<feSpecularLighting ${defaultRegion} in="${defaultIn}" surfaceScale="${props.surfaceScale || 1}" specularConstant="${props.specularConstant || 1}" specularExponent="${props.specularExponent || 20}" lighting-color="${props.lightingColor || '#ffffff'}"${result}>${lightElement}</feSpecularLighting>`
+      }
+      
+      case 'feDiffuseLighting': {
+        const lightElement = generatePreviewLightElement(props)
+        return `<feDiffuseLighting ${defaultRegion} in="${defaultIn}" surfaceScale="${props.surfaceScale || 1}" diffuseConstant="${props.diffuseConstant || 1}" lighting-color="${props.lightingColor || '#ffffff'}"${result}>${lightElement}</feDiffuseLighting>`
       }
       
       default:

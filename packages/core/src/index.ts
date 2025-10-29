@@ -96,12 +96,30 @@ export interface SpecularLightingProps {
   specularConstant?: number;
   specularExponent?: number;
   lightingColor?: string;
+  // 光源属性
+  lightType?: 'distant' | 'point' | 'spot';
+  azimuth?: number;
+  elevation?: number;
+  x?: number;
+  y?: number;
+  z?: number;
+  pointsAtZ?: number;
+  limitingConeAngle?: number;
 }
 
 export interface DiffuseLightingProps {
   surfaceScale?: number;
   diffuseConstant?: number;
   lightingColor?: string;
+  // 光源属性
+  lightType?: 'distant' | 'point' | 'spot';
+  azimuth?: number;
+  elevation?: number;
+  x?: number;
+  y?: number;
+  z?: number;
+  pointsAtZ?: number;
+  limitingConeAngle?: number;
 }
 
 export interface FloodProps {
@@ -316,12 +334,14 @@ function generateSubFilterElement(subFilter: SubFilter): string {
     
     case 'feSpecularLighting': {
       const p = props as SpecularLightingProps;
-      return `<feSpecularLighting surfaceScale="${p.surfaceScale || 1}" specularConstant="${p.specularConstant || 1}" specularExponent="${p.specularExponent || 1}" lighting-color="${p.lightingColor || 'white'}"${common} />`;
+      const lightElement = generateLightElement(p);
+      return `<feSpecularLighting surfaceScale="${p.surfaceScale || 1}" specularConstant="${p.specularConstant || 1}" specularExponent="${p.specularExponent || 20}" lighting-color="${p.lightingColor || '#ffffff'}"${common}>${lightElement}</feSpecularLighting>`;
     }
     
     case 'feDiffuseLighting': {
       const p = props as DiffuseLightingProps;
-      return `<feDiffuseLighting surfaceScale="${p.surfaceScale || 1}" diffuseConstant="${p.diffuseConstant || 1}" lighting-color="${p.lightingColor || 'white'}"${common} />`;
+      const lightElement = generateLightElement(p);
+      return `<feDiffuseLighting surfaceScale="${p.surfaceScale || 1}" diffuseConstant="${p.diffuseConstant || 1}" lighting-color="${p.lightingColor || '#ffffff'}"${common}>${lightElement}</feDiffuseLighting>`;
     }
     
     case 'feFlood': {
@@ -398,6 +418,25 @@ export function register(filters: FilterDefinition | FilterDefinition[]): void {
   filterArray.forEach(filter => {
     saveFilterConfig(filter.id, filter.config);
   });
+}
+
+// 生成光源元素
+function generateLightElement(props: SpecularLightingProps | DiffuseLightingProps): string {
+  const lightType = props.lightType || 'distant';
+  
+  switch (lightType) {
+    case 'distant':
+      return `<feDistantLight azimuth="${props.azimuth || 45}" elevation="${props.elevation || 30}" />`;
+    
+    case 'point':
+      return `<fePointLight x="${props.x || 100}" y="${props.y || 100}" z="${props.z || 200}" />`;
+    
+    case 'spot':
+      return `<feSpotLight x="${props.x || 100}" y="${props.y || 100}" z="${props.z || 200}" pointsAtX="${props.x || 100}" pointsAtY="${props.y || 100}" pointsAtZ="${props.pointsAtZ || 0}" specularExponent="${(props as SpecularLightingProps).specularExponent || 1}" limitingConeAngle="${props.limitingConeAngle || 45}" />`;
+    
+    default:
+      return `<feDistantLight azimuth="45" elevation="30" />`;
+  }
 }
 
 // 获取或创建SVG容器

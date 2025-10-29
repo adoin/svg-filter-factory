@@ -668,6 +668,152 @@
         />
       </el-form-item>
       
+      <el-form-item label="光源类型">
+        <el-select 
+          v-model="localProps.lightType" 
+          @change="onLightTypeChange"
+          :options="lightTypeOptions"
+        />
+      </el-form-item>
+      
+      <!-- 平行光 (feDistantLight) -->
+      <template v-if="localProps.lightType === 'distant'">
+        <el-row :gutter="10">
+          <el-col :span="12">
+            <el-form-item label="方位角 (azimuth)">
+              <el-input-number 
+                v-model="localProps.azimuth" 
+                :min="0"
+                :max="360"
+                :step="1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="仰角 (elevation)">
+              <el-input-number 
+                v-model="localProps.elevation" 
+                :min="0"
+                :max="90"
+                :step="1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </template>
+      
+      <!-- 点光源 (fePointLight) -->
+      <template v-if="localProps.lightType === 'point'">
+        <el-row :gutter="10">
+          <el-col :span="8">
+            <el-form-item label="X 坐标">
+              <el-input-number 
+                v-model="localProps.x" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="Y 坐标">
+              <el-input-number 
+                v-model="localProps.y" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="Z 坐标">
+              <el-input-number 
+                v-model="localProps.z" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </template>
+      
+      <!-- 聚光灯 (feSpotLight) -->
+      <template v-if="localProps.lightType === 'spot'">
+        <el-row :gutter="10">
+          <el-col :span="6">
+            <el-form-item label="X 坐标">
+              <el-input-number 
+                v-model="localProps.x" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="Y 坐标">
+              <el-input-number 
+                v-model="localProps.y" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="Z 坐标">
+              <el-input-number 
+                v-model="localProps.z" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="目标 Z">
+              <el-input-number 
+                v-model="localProps.pointsAtZ" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="10">
+          <el-col :span="12">
+            <el-form-item label="聚光角度 (specularExponent)">
+              <el-input-number 
+                v-model="localProps.specularExponent" 
+                :min="0"
+                :max="90"
+                :step="1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="聚光衰减 (limitingConeAngle)">
+              <el-input-number 
+                v-model="localProps.limitingConeAngle" 
+                :min="0"
+                :max="90"
+                :step="1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </template>
+      
       <el-form-item label="表面缩放 (surfaceScale)">
         <el-input-number 
           v-model="localProps.surfaceScale" 
@@ -719,6 +865,152 @@
           :options="getInputOptions()"
         />
       </el-form-item>
+      
+      <el-form-item label="光源类型">
+        <el-select 
+          v-model="localProps.lightType" 
+          @change="onLightTypeChange"
+          :options="lightTypeOptions"
+        />
+      </el-form-item>
+      
+      <!-- 平行光 (feDistantLight) -->
+      <template v-if="localProps.lightType === 'distant'">
+        <el-row :gutter="10">
+          <el-col :span="12">
+            <el-form-item label="方位角 (azimuth)">
+              <el-input-number 
+                v-model="localProps.azimuth" 
+                :min="0"
+                :max="360"
+                :step="1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="仰角 (elevation)">
+              <el-input-number 
+                v-model="localProps.elevation" 
+                :min="0"
+                :max="90"
+                :step="1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </template>
+      
+      <!-- 点光源 (fePointLight) -->
+      <template v-if="localProps.lightType === 'point'">
+        <el-row :gutter="10">
+          <el-col :span="8">
+            <el-form-item label="X 坐标">
+              <el-input-number 
+                v-model="localProps.x" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="Y 坐标">
+              <el-input-number 
+                v-model="localProps.y" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="Z 坐标">
+              <el-input-number 
+                v-model="localProps.z" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </template>
+      
+      <!-- 聚光灯 (feSpotLight) -->
+      <template v-if="localProps.lightType === 'spot'">
+        <el-row :gutter="10">
+          <el-col :span="6">
+            <el-form-item label="X 坐标">
+              <el-input-number 
+                v-model="localProps.x" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="Y 坐标">
+              <el-input-number 
+                v-model="localProps.y" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="Z 坐标">
+              <el-input-number 
+                v-model="localProps.z" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="目标 Z">
+              <el-input-number 
+                v-model="localProps.pointsAtZ" 
+                :step="10"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="10">
+          <el-col :span="12">
+            <el-form-item label="聚光角度 (specularExponent)">
+              <el-input-number 
+                v-model="localProps.specularExponent" 
+                :min="0"
+                :max="90"
+                :step="1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="聚光衰减 (limitingConeAngle)">
+              <el-input-number 
+                v-model="localProps.limitingConeAngle" 
+                :min="0"
+                :max="90"
+                :step="1"
+                size="small"
+                @blur="emitUpdate"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </template>
       
       <el-form-item label="表面缩放 (surfaceScale)">
         <el-input-number 
@@ -972,6 +1264,44 @@ const channelSelectorOptions = [
   { label: 'B - 蓝色通道', value: 'B' },
   { label: 'A - Alpha通道', value: 'A' }
 ]
+
+// 光源类型选项
+const lightTypeOptions = [
+  { label: '平行光 (feDistantLight)', value: 'distant' },
+  { label: '点光源 (fePointLight)', value: 'point' },
+  { label: '聚光灯 (feSpotLight)', value: 'spot' }
+]
+
+// 光源类型切换处理
+const onLightTypeChange = () => {
+  // 清除之前的光源属性
+  delete localProps.value.azimuth
+  delete localProps.value.elevation
+  delete localProps.value.x
+  delete localProps.value.y
+  delete localProps.value.z
+  delete localProps.value.pointsAtZ
+  delete localProps.value.limitingConeAngle
+  
+  // 根据光源类型设置默认值
+  if (localProps.value.lightType === 'distant') {
+    localProps.value.azimuth = 45
+    localProps.value.elevation = 30
+  } else if (localProps.value.lightType === 'point') {
+    localProps.value.x = 100
+    localProps.value.y = 100
+    localProps.value.z = 200
+  } else if (localProps.value.lightType === 'spot') {
+    localProps.value.x = 100
+    localProps.value.y = 100
+    localProps.value.z = 200
+    localProps.value.pointsAtZ = 0
+    localProps.value.specularExponent = 1
+    localProps.value.limitingConeAngle = 45
+  }
+  
+  emitUpdate()
+}
 
 // 获取合成操作的描述
 const getCompositeDescription = (operator: string) => {
