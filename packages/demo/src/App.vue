@@ -127,7 +127,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- SVG图形 -->
             <div class="flex flex-col">
               <h4 class="text-center font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-t-lg">
@@ -181,6 +181,29 @@
                   class="rounded-lg shadow-md"
                   :style="{ filter: currentFilter ? currentFilter : 'none' }"
                 />
+              </div>
+            </div>
+
+            <!-- SVG文本 -->
+            <div class="flex flex-col">
+              <h4 class="text-center font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-t-lg">
+                SVG 文本
+              </h4>
+              <div class="flex justify-center items-center h-240px bg-gradient-to-br from-gray-50 to-blue-50 rounded-b-lg shadow p-5">
+                <svg width="100%" height="200" viewBox="0 0 500 200">
+                  
+                  <text 
+                    x="250" 
+                    y="120" 
+                    text-anchor="middle" 
+                    font-size="22" 
+                    font-weight="bold" 
+                    fill="#667eea"
+                    :filter="currentFilter ? currentFilter : 'none'"
+                  >
+                    SVG TEXT
+                  </text>
+                </svg>
               </div>
             </div>
           </div>
@@ -252,16 +275,45 @@
             </div>
           </div>
           
-          <!-- 右侧：代码预览 -->
-          <div class="space-y-2">
-            <div class="flex justify-between items-center">
-              <h3 class="text-lg font-semibold text-gray-700">预览代码:</h3>
-              <el-button type="primary" size="small" @click="copyCode">
-                <span class="i-carbon-copy mr-1"></span>
-                复制代码
-              </el-button>
+          <!-- 右侧：实时预览和代码 -->
+          <div class="space-y-4">
+            <!-- 实时预览效果 -->
+            <div class="space-y-2">
+              <h3 class="text-lg font-semibold text-gray-700">实时预览:</h3>
+              <div class="bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg p-8 flex items-center justify-center min-h-[150px]">
+                <svg width="100%" height="100" viewBox="0 0 400 100" xmlns="http://www.w3.org/2000/svg">
+                  <!-- 动态过滤器定义 -->
+                  <defs>
+                    <filter :id="previewFilterId" v-html="previewFilterSvg"></filter>
+                  </defs>
+                  <!-- 应用过滤器的文字 -->
+                  <text 
+                    x="200" 
+                    y="77" 
+                    text-anchor="middle" 
+                    font-size="20" 
+                    font-weight="bold" 
+                    fill="#667eea"
+                    :filter="`url(#${previewFilterId})`"
+                  >
+                    SVG Filter
+                  </text>
+                </svg>
+              </div>
+              <el-text type="info" size="small">实时查看过滤器效果，无需注册</el-text>
             </div>
-            <pre class="bg-gray-900 text-white rounded-lg p-4 overflow-x-auto text-sm"><code class="language-javascript" v-html="highlightedCode"></code></pre>
+            
+            <!-- 代码预览 -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-700">预览代码:</h3>
+                <el-button type="primary" size="small" @click="copyCode">
+                  <span class="i-carbon-copy mr-1"></span>
+                  复制代码
+                </el-button>
+              </div>
+              <pre class="bg-gray-900 text-white rounded-lg p-4 overflow-x-auto text-sm"><code class="language-javascript" v-html="highlightedCode"></code></pre>
+            </div>
           </div>
         </div>
       </section>
@@ -284,6 +336,8 @@ import {
   getRegisteredFilters,
   clearFilters,
   deleteFilter,
+  updateFilterDom,
+  updateFilterConfig,
   type FilterDefinition,
   type SubFilter
 } from '@svg-filter-factory/core'
@@ -303,7 +357,7 @@ const filterTypeOptions = [
   { label: '混合 (feBlend)', value: 'feBlend' },
   { label: '合成 (feComposite)', value: 'feComposite' },
   { label: '合并 (feMerge)', value: 'feMerge' },
-  { label: '湍流 (feTurbulence)', value: 'feTurbulence' },
+  { label: '湍流 (feTurbulence-请勿单独使用)', value: 'feTurbulence' },
   { label: '卷积矩阵 (feConvolveMatrix)', value: 'feConvolveMatrix' },
   { label: '置换映射 (feDisplacementMap)', value: 'feDisplacementMap' },
   { label: '镜面光照 (feSpecularLighting)', value: 'feSpecularLighting' },
@@ -440,11 +494,11 @@ const applyFilter = (filter: string) => {
 // 动态表单 - 添加子过滤器（根据类型设置合理的默认值）
 const getDefaultSubFilter = (type: string = 'feGaussianBlur') => {
   const defaults: Record<string, { props: any; result: string }> = {
-    feGaussianBlur: { props: { stdDeviation: '2,2' }, result: 'blur' },
-    feDropShadow: { props: { dx: 2, dy: 2, stdDeviation: '2,2', floodColor: '#000000', floodOpacity: 1 }, result: 'shadow' },
+    feGaussianBlur: { props: { in: 'SourceGraphic', stdDeviation: '2,2' }, result: 'blur' },
+    feDropShadow: { props: { in: 'SourceGraphic', dx: 2, dy: 2, stdDeviation: '2,2', floodColor: '#000000', floodOpacity: 1 }, result: 'shadow' },
     feFlood: { props: { floodColor: '#000000', floodOpacity: 1 }, result: 'flood' },
-    feOffset: { props: { dx: 0, dy: 0 }, result: 'offset' },
-    feColorMatrix: { props: { type: 'saturate', values: '1' }, result: 'colormatrix' },
+    feOffset: { props: { in: 'SourceGraphic', dx: 0, dy: 0 }, result: 'offset' },
+    feColorMatrix: { props: { in: 'SourceGraphic', type: 'saturate', values: '1' }, result: 'colormatrix' },
     feComponentTransfer: { 
       props: { 
         funcR: { type: 'identity' },
@@ -454,13 +508,17 @@ const getDefaultSubFilter = (type: string = 'feGaussianBlur') => {
       }, 
       result: 'transfer' 
     },
-    feTurbulence: { props: { type: 'fractalNoise', baseFrequency: 0.05, numOctaves: 1 }, result: 'turbulence' },
+    feTurbulence: { props: { type: 'fractalNoise', baseFrequency: '0.05,0.05', numOctaves: 1, seed: 0, stitchTiles: 'noStitch' }, result: 'turbulence' },
     feBlend: { props: { mode: 'normal', in: 'SourceGraphic', in2: 'SourceAlpha' }, result: 'blend' },
     feComposite: { props: { operator: 'over', in: 'SourceGraphic', in2: 'SourceAlpha' }, result: 'composite' },
     feMerge: { props: { inputs: ['SourceGraphic'] }, result: 'merge' },
-    feMorphology: { props: { operator: 'erode', radius: '0,0' }, result: 'morphology' },
-    feConvolveMatrix: { props: { order: 3, kernelMatrix: '1 0 0 0 1 0 0 0 1', bias: 0 }, result: 'convolve' },
-    feDisplacementMap: { props: { scale: 0, xChannelSelector: 'R', yChannelSelector: 'G' }, result: 'displace' }
+    feMorphology: { props: { in: 'SourceGraphic', operator: 'erode', radius: '0,0' }, result: 'morphology' },
+    feConvolveMatrix: { props: { in: 'SourceGraphic', order: 3, kernelMatrix: '0 -1 0 -1 5 -1 0 -1 0', bias: 0, edgeMode: 'duplicate' }, result: 'convolve' },
+    feDisplacementMap: { props: { scale: 50, xChannelSelector: 'R', yChannelSelector: 'G', in: 'SourceGraphic', in2: 'SourceGraphic' }, result: 'displace' },
+    feSpecularLighting: { props: { in: 'SourceGraphic', surfaceScale: 1, specularConstant: 1, specularExponent: 20, lightingColor: '#ffffff' }, result: 'specular' },
+    feDiffuseLighting: { props: { in: 'SourceGraphic', surfaceScale: 1, diffuseConstant: 1, lightingColor: '#ffffff' }, result: 'diffuse' },
+    feTile: { props: { in: 'SourceGraphic' }, result: 'tile' },
+    feImage: { props: { href: '', align: 'xMidYMid', meetOrSlice: 'meet' }, result: 'image' }
   }
   
   const config = defaults[type] || { props: {}, result: 'effect' }
@@ -653,6 +711,80 @@ const highlightedCode = computed(() => {
   } catch {
     return previewCode.value
   }
+})
+
+// 预览过滤器 ID
+const previewFilterId = computed(() => {
+  return newFilterId.value || 'preview-filter'
+})
+
+// 生成预览 SVG 过滤器
+const previewFilterSvg = computed(() => {
+  if (newSubFilters.value.length === 0) {
+    return ''
+  }
+  
+  // 使用 core 库的逻辑生成 SVG（简化版）
+  const defaultRegion = 'x="0%" y="0%" width="100%" height="100%"'
+  
+  const subFiltersHtml = newSubFilters.value.map((sf: Partial<SubFilter>) => {
+    if (!sf.type) return ''
+    
+    const props = sf.props as any || {}
+    const defaultIn = sf.in || 'SourceGraphic'
+    const result = sf.result ? ` result="${sf.result}"` : ''
+    
+    // 简化的 SVG 生成逻辑
+    switch (sf.type) {
+      case 'feGaussianBlur':
+        return `<feGaussianBlur ${defaultRegion} in="${defaultIn}" stdDeviation="${props.stdDeviation || '2,2'}"${result} />`
+      
+      case 'feDropShadow':
+        return `<feDropShadow ${defaultRegion} in="${defaultIn}" dx="${props.dx || 0}" dy="${props.dy || 0}" stdDeviation="${props.stdDeviation || '2,2'}" flood-color="${props.floodColor || '#000000'}" flood-opacity="${props.floodOpacity || 1}"${result} />`
+      
+      case 'feFlood':
+        return `<feFlood ${defaultRegion} flood-color="${props.floodColor || '#000000'}" flood-opacity="${props.floodOpacity || 1}"${result} />`
+      
+      case 'feOffset':
+        return `<feOffset ${defaultRegion} in="${defaultIn}" dx="${props.dx || 0}" dy="${props.dy || 0}"${result} />`
+      
+      case 'feColorMatrix':
+        return `<feColorMatrix ${defaultRegion} in="${defaultIn}" type="${props.type || 'saturate'}" values="${props.values || '1'}"${result} />`
+      
+      case 'feBlend':
+        return `<feBlend ${defaultRegion} mode="${props.mode || 'normal'}" in="${props.in || 'SourceGraphic'}" in2="${props.in2 || 'SourceGraphic'}"${result} />`
+      
+      case 'feComposite':
+        return `<feComposite ${defaultRegion} operator="${props.operator || 'over'}" in="${props.in || 'SourceGraphic'}" in2="${props.in2 || 'SourceGraphic'}"${result} />`
+      
+      case 'feMorphology':
+        return `<feMorphology ${defaultRegion} in="${defaultIn}" operator="${props.operator || 'erode'}" radius="${props.radius || '0,0'}"${result} />`
+      
+      case 'feTurbulence':
+        return `<feTurbulence ${defaultRegion} type="${props.type || 'fractalNoise'}" baseFrequency="${props.baseFrequency || '0.05,0.05'}" numOctaves="${props.numOctaves || 1}" seed="${props.seed || 0}"${result} />`
+      
+      case 'feConvolveMatrix':
+        return `<feConvolveMatrix ${defaultRegion} in="${defaultIn}" order="${props.order || 3}" kernelMatrix="${props.kernelMatrix || '1 0 0 0 1 0 0 0 1'}" bias="${props.bias || 0}"${result} />`
+      
+      case 'feMerge': {
+        const inputs = props.inputs || ['SourceGraphic']
+        const nodes = inputs.map((input: string) => `<feMergeNode in="${input}" />`).join('')
+        return `<feMerge ${defaultRegion}${result}>${nodes}</feMerge>`
+      }
+      
+      case 'feImage': {
+        const align = props.align || 'xMidYMid'
+        const meetOrSlice = props.meetOrSlice || 'meet'
+        const preserveAspectRatio = align === 'none' ? 'none' : `${align} ${meetOrSlice}`
+        return `<feImage ${defaultRegion} href="${props.href || ''}" preserveAspectRatio="${preserveAspectRatio}"${result} />`
+      }
+      
+      default:
+        return `<!-- ${sf.type} 预览暂不支持 -->`
+    }
+  }).filter(Boolean).join('\n  ')
+  
+  return subFiltersHtml
 })
 
 // 复制代码

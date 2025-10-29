@@ -111,7 +111,7 @@ export interface FloodProps {
 
 export interface TurbulenceProps {
   type?: 'fractalNoise' | 'turbulence';
-  baseFrequency?: number;
+  baseFrequency?: number | string; // 支持单个数字或 "x,y" 格式
   numOctaves?: number;
   seed?: number;
   stitchTiles?: 'stitch' | 'noStitch';
@@ -119,7 +119,8 @@ export interface TurbulenceProps {
 
 export interface ImageProps {
   href?: string;
-  preserveAspectRatio?: string;
+  align?: 'none' | 'xMinYMin' | 'xMidYMin' | 'xMaxYMin' | 'xMinYMid' | 'xMidYMid' | 'xMaxYMid' | 'xMinYMax' | 'xMidYMax' | 'xMaxYMax';
+  meetOrSlice?: 'meet' | 'slice';
 }
 
 export interface OffsetProps {
@@ -335,7 +336,11 @@ function generateSubFilterElement(subFilter: SubFilter): string {
     
     case 'feImage': {
       const p = props as ImageProps;
-      return `<feImage ${defaultRegion} href="${p.href || ''}" preserveAspectRatio="${p.preserveAspectRatio || 'xMidYMid meet'}"${result ? ` result="${result}"` : ''} />`;
+      const align = p.align || 'xMidYMid';
+      const meetOrSlice = p.meetOrSlice || 'meet';
+      // 如果 align 是 'none'，则只使用 'none'，否则组合 align 和 meetOrSlice
+      const preserveAspectRatio = align === 'none' ? 'none' : `${align} ${meetOrSlice}`;
+      return `<feImage ${defaultRegion} href="${p.href || ''}" preserveAspectRatio="${preserveAspectRatio}"${result ? ` result="${result}"` : ''} />`;
     }
     
     case 'feTile': {
@@ -396,12 +401,24 @@ export function register(filters: FilterDefinition | FilterDefinition[]): void {
 }
 
 // 获取或创建SVG容器
-function getOrCreateSvgContainer(): SVGDefsElement {
+export interface SvgContainerOptions {
+  width?: string;
+  height?: string;
+  viewBox?: string;
+}
+
+function getOrCreateSvgContainer(options: SvgContainerOptions = {}): SVGDefsElement {
+  const {
+    width = '100%',
+    height = '200',
+    viewBox = '0 0 500 200'
+  } = options;
+
   let svgContainer = document.getElementById('__svg_filter_factory_container');
   if (!svgContainer) {
     svgContainer = document.createElement('div');
     svgContainer.id = '__svg_filter_factory_container';
-    svgContainer.style.display = 'none';
+    svgContainer.style.opacity = '0';
     document.body.appendChild(svgContainer);
   }
   
@@ -414,6 +431,11 @@ function getOrCreateSvgContainer(): SVGDefsElement {
     svg.style.height = '0';
     svg.style.visibility = 'hidden';
     
+    // 设置 SVG 尺寸属性
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+    svg.setAttribute('viewBox', viewBox);
+    
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
     defs.id = '__svg_filter_factory_defs';
     svg.appendChild(defs);
@@ -423,14 +445,19 @@ function getOrCreateSvgContainer(): SVGDefsElement {
   
   return svgDefs;
 }
-
+export const defaultSVGAttributes: SvgContainerOptions = {
+  width: '100%',
+  height: '200',
+  viewBox: '0 0 500 200',
+}
 /**
  * Render specific filter(s) by ID to the DOM
  * @param filterIds - Single filter ID or array of filter IDs to render
+ * @param attrs - SVG attributes
  */
-export function render(filterIds: string | string[]): void {
+export function render(filterIds: string | string[], attrs: SvgContainerOptions = defaultSVGAttributes): void {
   const ids = Array.isArray(filterIds) ? filterIds : [filterIds];
-  const svgDefs = getOrCreateSvgContainer();
+  const svgDefs = getOrCreateSvgContainer(attrs);
   
   ids.forEach(filterId => {
     // 检查是否已渲染
@@ -458,11 +485,12 @@ export function render(filterIds: string | string[]): void {
 }
 /**
  * Render all filters to the DOM
+ * @param attrs - SVG attributes
  */
-export function renderAll(): void {
+export function renderAll(attrs = defaultSVGAttributes): void {
   const filters = getRegisteredFilters();
   filters.forEach(filter => {
-    render(filter.id);
+    render(filter.id,attrs);
   });
 }
 /**
@@ -537,6 +565,106 @@ export function deleteFilter(id: string): void {
     if (svgContainer) {
       svgContainer.remove();
     }
+  }
+}
+
+/**
+ * Update filter DOM only (temporary change, will be reset on re-render)
+ * @param filterId - The filter ID
+ * @param subFilterResult - The result name of the sub-filter to update
+ * @param attrName - The attribute name to update
+ * @param attrValue - The new attribute value
+ */
+export function updateFilterDom(
+  filterId: string,
+  subFilterResult: string,
+  attrName: string,
+  attrValue: string | number
+): boolean {
+  try {
+    const filterElement = document.getElementById(filterId);
+    if (!filterElement) {
+      console.error(`Filter with id "${filterId}" not found in DOM`);
+      return false;
+    }
+    
+    // Find the sub-filter element by result attribute
+    const subFilterElement = Array.from(filterElement.children).find(
+      (child) => child.getAttribute('result') === subFilterResult
+    );
+    
+    if (!subFilterElement) {
+      console.error(`Sub-filter with result "${subFilterResult}" not found in filter "${filterId}"`);
+      return false;
+    }
+    
+    // Update the attribute
+    subFilterElement.setAttribute(attrName, String(attrValue));
+    return true;
+  } catch (error) {
+    console.error('Error updating filter DOM:', error);
+    return false;
+  }
+}
+
+/**
+ * Update filter configuration and DOM (permanent change, persists on re-render)
+ * @param filterId - The filter ID
+ * @param subFilterResult - The result name of the sub-filter to update
+ * @param propName - The property name to update
+ * @param propValue - The new property value
+ */
+export function updateFilterConfig(
+  filterId: string,
+  subFilterResult: string,
+  propName: string,
+  propValue: any
+): boolean {
+  try {
+    // 1. Update localStorage configuration
+    const config = loadFilterConfig(filterId);
+    if (!config) {
+      console.error(`Filter config with id "${filterId}" not found`);
+      return false;
+    }
+    
+    // Find the sub-filter by result
+    const subFilter = config.find((sf: SubFilter) => sf.result === subFilterResult);
+    if (!subFilter) {
+      console.error(`Sub-filter with result "${subFilterResult}" not found in filter "${filterId}"`);
+      return false;
+    }
+    
+    // Update the property
+    if (!subFilter.props) {
+      subFilter.props = {} as any;
+    }
+    (subFilter.props as any)[propName] = propValue;
+    
+    // Save back to localStorage
+    saveFilterConfig(filterId, config);
+    
+    // 2. Update DOM
+    const filterElement = document.getElementById(filterId);
+    if (filterElement) {
+      const subFilterElement = Array.from(filterElement.children).find(
+        (child) => child.getAttribute('result') === subFilterResult
+      );
+      
+      if (subFilterElement) {
+        // Map prop name to attribute name (handle special cases)
+        let attrName = propName;
+        if (propName === 'floodColor') attrName = 'flood-color';
+        if (propName === 'floodOpacity') attrName = 'flood-opacity';
+        
+        subFilterElement.setAttribute(attrName, String(propValue));
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating filter config:', error);
+    return false;
   }
 }
 

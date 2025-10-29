@@ -2,6 +2,14 @@
   <div class="p-3 bg-gray-50 rounded">
     <!-- feGaussianBlur -->
     <template v-if="type === 'feGaussianBlur'">
+      <el-form-item label="输入源 (in)">
+        <el-select 
+          v-model="localProps.in" 
+          @change="emitUpdate"
+          :options="getInputOptions()"
+        />
+      </el-form-item>
+      
       <el-row :gutter="10">
         <el-col :span="12">
           <el-form-item label="偏差值 X">
@@ -31,6 +39,14 @@
 
     <!-- feDropShadow -->
     <template v-else-if="type === 'feDropShadow'">
+      <el-form-item label="输入源 (in)">
+        <el-select 
+          v-model="localProps.in" 
+          @change="emitUpdate"
+          :options="getInputOptions()"
+        />
+      </el-form-item>
+      
       <el-row :gutter="10">
         <el-col :span="12">
           <el-form-item label="偏移 X (dx)">
@@ -130,6 +146,14 @@
 
     <!-- feColorMatrix -->
     <template v-else-if="type === 'feColorMatrix'">
+      <el-form-item label="输入源 (in)">
+        <el-select 
+          v-model="localProps.in" 
+          @change="emitUpdate"
+          :options="getInputOptions()"
+        />
+      </el-form-item>
+      
       <el-form-item label="类型">
         <el-select 
           v-model="localProps.type" 
@@ -164,6 +188,14 @@
 
     <!-- feMorphology -->
     <template v-else-if="type === 'feMorphology'">
+      <el-form-item label="输入源 (in)">
+        <el-select 
+          v-model="localProps.in" 
+          @change="emitUpdate"
+          :options="getInputOptions()"
+        />
+      </el-form-item>
+      
       <el-form-item label="操作类型">
         <el-select 
           v-model="localProps.operator" 
@@ -204,6 +236,14 @@
 
     <!-- feOffset -->
     <template v-else-if="type === 'feOffset'">
+      <el-form-item label="输入源 (in)">
+        <el-select 
+          v-model="localProps.in" 
+          @change="emitUpdate"
+          :options="getInputOptions()"
+        />
+      </el-form-item>
+      
       <el-row :gutter="10">
         <el-col :span="12">
           <el-form-item label="偏移 X (dx)">
@@ -475,6 +515,352 @@
       </div>
     </template>
 
+    <!-- feTurbulence -->
+    <template v-else-if="type === 'feTurbulence'">
+      <el-form-item label="噪声类型">
+        <el-select 
+          v-model="localProps.type" 
+          @change="emitUpdate"
+          :options="turbulenceTypes"
+        />
+      </el-form-item>
+      
+      <el-row :gutter="10">
+        <el-col :span="12">
+          <el-form-item label="基础频率 X">
+            <el-input-number 
+              v-model="localProps.baseFrequencyX" 
+              :min="0" 
+              :max="1"
+              :step="0.01"
+              size="small"
+              @blur="updateBaseFrequency"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="基础频率 Y">
+            <el-input-number 
+              v-model="localProps.baseFrequencyY" 
+              :min="0" 
+              :max="1"
+              :step="0.01"
+              size="small"
+              @blur="updateBaseFrequency"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      
+      <el-form-item label="八度数 (numOctaves)">
+        <el-input-number 
+          v-model="localProps.numOctaves" 
+          :min="1" 
+          :max="10"
+          :step="1"
+          size="small"
+          @blur="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-form-item label="随机种子 (seed)">
+        <el-input-number 
+          v-model="localProps.seed" 
+          :min="0"
+          :step="1"
+          size="small"
+          @blur="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-form-item label="平铺拼接">
+        <el-select 
+          v-model="localProps.stitchTiles" 
+          @change="emitUpdate"
+          :options="stitchOptions"
+        />
+      </el-form-item>
+      
+      <el-text type="info" size="small">
+        {{ localProps.type === 'fractalNoise' ? '分形噪声：产生云雾、大理石等自然纹理效果' : '湍流噪声：产生水波、火焰等动态效果' }}
+      </el-text>
+    </template>
+
+    <!-- feConvolveMatrix -->
+    <template v-else-if="type === 'feConvolveMatrix'">
+      <el-form-item label="输入源 (in)">
+        <el-select 
+          v-model="localProps.in" 
+          @change="emitUpdate"
+          :options="getInputOptions()"
+        />
+      </el-form-item>
+      
+      <el-form-item label="矩阵阶数 (order)">
+        <el-input-number 
+          v-model="localProps.order" 
+          :min="3" 
+          :max="5"
+          :step="1"
+          size="small"
+          @blur="onConvolveOrderChange"
+        />
+      </el-form-item>
+      
+      <el-form-item label="卷积核矩阵 (kernelMatrix)">
+        <el-input
+          v-model="localProps.kernelMatrix"
+          type="textarea"
+          :rows="localProps.order || 3"
+          @blur="emitUpdate"
+          placeholder="输入矩阵值，用空格分隔"
+          class="font-mono"
+        />
+        <el-text type="info" size="small" class="block mt-1">
+          {{ localProps.order }}x{{ localProps.order }} 矩阵，共需 {{ (localProps.order || 3) * (localProps.order || 3) }} 个值
+        </el-text>
+      </el-form-item>
+      
+      <el-row :gutter="10">
+        <el-col :span="12">
+          <el-form-item label="偏移值 (bias)">
+            <el-input-number 
+              v-model="localProps.bias" 
+              :step="0.1"
+              size="small"
+              @blur="emitUpdate"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="边缘模式">
+            <el-select 
+              v-model="localProps.edgeMode" 
+              @change="emitUpdate"
+              :options="edgeModeOptions"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      
+      <div class="space-y-2">
+        <el-text type="warning" size="small" class="block">常用预设矩阵：</el-text>
+        <div class="flex gap-2 flex-wrap">
+          <el-button size="small" @click="setConvolvePreset('sharpen')">锐化</el-button>
+          <el-button size="small" @click="setConvolvePreset('blur')">模糊</el-button>
+          <el-button size="small" @click="setConvolvePreset('edge')">边缘检测</el-button>
+          <el-button size="small" @click="setConvolvePreset('emboss')">浮雕</el-button>
+        </div>
+      </div>
+      
+      <el-text type="info" size="small">
+        卷积矩阵用于图像处理，可实现锐化、模糊、边缘检测等效果
+      </el-text>
+    </template>
+
+    <!-- feSpecularLighting -->
+    <template v-else-if="type === 'feSpecularLighting'">
+      <el-form-item label="输入源 (in)">
+        <el-select 
+          v-model="localProps.in" 
+          @change="emitUpdate"
+          :options="getInputOptions()"
+        />
+      </el-form-item>
+      
+      <el-form-item label="表面缩放 (surfaceScale)">
+        <el-input-number 
+          v-model="localProps.surfaceScale" 
+          :step="1"
+          size="small"
+          @blur="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-form-item label="镜面常量 (specularConstant)">
+        <el-input-number 
+          v-model="localProps.specularConstant" 
+          :min="0"
+          :step="0.1"
+          size="small"
+          @blur="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-form-item label="镜面指数 (specularExponent)">
+        <el-input-number 
+          v-model="localProps.specularExponent" 
+          :min="1"
+          :max="128"
+          :step="1"
+          size="small"
+          @blur="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-form-item label="光照颜色">
+        <el-color-picker 
+          v-model="localProps.lightingColor" 
+          @change="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-text type="info" size="small">
+        创建镜面高光效果，模拟光滑表面的反射光
+      </el-text>
+    </template>
+
+    <!-- feDiffuseLighting -->
+    <template v-else-if="type === 'feDiffuseLighting'">
+      <el-form-item label="输入源 (in)">
+        <el-select 
+          v-model="localProps.in" 
+          @change="emitUpdate"
+          :options="getInputOptions()"
+        />
+      </el-form-item>
+      
+      <el-form-item label="表面缩放 (surfaceScale)">
+        <el-input-number 
+          v-model="localProps.surfaceScale" 
+          :step="1"
+          size="small"
+          @blur="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-form-item label="漫反射常量 (diffuseConstant)">
+        <el-input-number 
+          v-model="localProps.diffuseConstant" 
+          :min="0"
+          :step="0.1"
+          size="small"
+          @blur="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-form-item label="光照颜色">
+        <el-color-picker 
+          v-model="localProps.lightingColor" 
+          @change="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-text type="info" size="small">
+        创建漫反射光照效果，模拟粗糙表面的散射光
+      </el-text>
+    </template>
+
+    <!-- feTile -->
+    <template v-else-if="type === 'feTile'">
+      <el-form-item label="输入源 (in)">
+        <el-select 
+          v-model="localProps.in" 
+          @change="emitUpdate"
+          :options="getInputOptions()"
+        />
+      </el-form-item>
+      
+      <el-text type="info" size="small">
+        将输入图像平铺重复填充整个滤镜区域
+      </el-text>
+    </template>
+
+    <!-- feImage -->
+    <template v-else-if="type === 'feImage'">
+      <el-form-item label="图像链接 (href)">
+        <el-input 
+          v-model="localProps.href" 
+          @blur="emitUpdate"
+          placeholder="输入图像 URL 或 data URI"
+        />
+      </el-form-item>
+      
+      <el-row :gutter="10">
+        <el-col :span="24">
+          <el-form-item label="对齐方式 (align)">
+            <el-select 
+              v-model="localProps.align" 
+              @change="emitUpdate"
+              :options="alignOptions"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="缩放模式 (meetOrSlice)">
+            <el-select 
+              v-model="localProps.meetOrSlice" 
+              @change="emitUpdate"
+              :options="meetOrSliceOptions"
+              :disabled="localProps.align === 'none'"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      
+      <el-text type="info" size="small">
+        在滤镜中引入外部图像。align='none' 时图像会拉伸填充；其他情况下，meet=完整显示，slice=裁剪填充
+      </el-text>
+    </template>
+
+    <!-- feDisplacementMap -->
+    <template v-else-if="type === 'feDisplacementMap'">
+      <el-row :gutter="10">
+        <el-col :span="24">
+          <el-form-item label="输入源 1 (in)">
+            <el-select 
+              v-model="localProps.in" 
+              @change="emitUpdate"
+              :options="getInputOptions()"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="位移映射源 (in2)">
+            <el-select 
+              v-model="localProps.in2" 
+              @change="emitUpdate"
+              :options="getInputOptions()"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      
+      <el-form-item label="位移缩放 (scale)">
+        <el-input-number 
+          v-model="localProps.scale" 
+          :step="1"
+          size="small"
+          @blur="emitUpdate"
+        />
+      </el-form-item>
+      
+      <el-row :gutter="10">
+        <el-col :span="12">
+          <el-form-item label="X 通道选择器">
+            <el-select 
+              v-model="localProps.xChannelSelector" 
+              @change="emitUpdate"
+              :options="channelSelectorOptions"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="Y 通道选择器">
+            <el-select 
+              v-model="localProps.yChannelSelector" 
+              @change="emitUpdate"
+              :options="channelSelectorOptions"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      
+      <el-text type="info" size="small">
+        使用 in2 图像的颜色通道值来位移 in 图像的像素位置，创建扭曲、波纹等效果
+      </el-text>
+    </template>
+
     <!-- 其他过滤器类型暂不在 FilterPropsEditor 中实现 -->
     <template v-else>
       <el-text type="info">该过滤器类型暂未在此组件实现</el-text>
@@ -540,6 +926,53 @@ const compositeOperators = [
   { label: 'arithmetic - 算术运算', value: 'arithmetic' }
 ]
 
+// 湍流噪声类型选项
+const turbulenceTypes = [
+  { label: 'fractalNoise - 分形噪声', value: 'fractalNoise' },
+  { label: 'turbulence - 湍流噪声', value: 'turbulence' }
+]
+
+// 平铺拼接选项
+const stitchOptions = [
+  { label: 'noStitch - 不拼接', value: 'noStitch' },
+  { label: 'stitch - 拼接', value: 'stitch' }
+]
+
+// 边缘模式选项
+const edgeModeOptions = [
+  { label: 'duplicate - 复制边缘', value: 'duplicate' },
+  { label: 'wrap - 环绕', value: 'wrap' },
+  { label: 'none - 无', value: 'none' }
+]
+
+// 对齐方式选项
+const alignOptions = [
+  { label: 'none - 拉伸填充', value: 'none' },
+  { label: 'xMinYMin - 左上对齐', value: 'xMinYMin' },
+  { label: 'xMidYMin - 顶部居中', value: 'xMidYMin' },
+  { label: 'xMaxYMin - 右上对齐', value: 'xMaxYMin' },
+  { label: 'xMinYMid - 左侧居中', value: 'xMinYMid' },
+  { label: 'xMidYMid - 完全居中', value: 'xMidYMid' },
+  { label: 'xMaxYMid - 右侧居中', value: 'xMaxYMid' },
+  { label: 'xMinYMax - 左下对齐', value: 'xMinYMax' },
+  { label: 'xMidYMax - 底部居中', value: 'xMidYMax' },
+  { label: 'xMaxYMax - 右下对齐', value: 'xMaxYMax' }
+]
+
+// 缩放模式选项
+const meetOrSliceOptions = [
+  { label: 'meet - 完整显示（留白）', value: 'meet' },
+  { label: 'slice - 裁剪填充（无留白）', value: 'slice' }
+]
+
+// 通道选择器选项
+const channelSelectorOptions = [
+  { label: 'R - 红色通道', value: 'R' },
+  { label: 'G - 绿色通道', value: 'G' },
+  { label: 'B - 蓝色通道', value: 'B' },
+  { label: 'A - Alpha通道', value: 'A' }
+]
+
 // 获取合成操作的描述
 const getCompositeDescription = (operator: string) => {
   const descriptions: Record<string, string> = {
@@ -590,6 +1023,49 @@ const removeMergeInput = (index: number) => {
   }
 }
 
+// feConvolveMatrix - 阶数改变时更新矩阵
+const onConvolveOrderChange = () => {
+  const order = localProps.value.order || 3
+  // 不自动更新 kernelMatrix，让用户手动输入或选择预设
+  emitUpdate()
+}
+
+// feConvolveMatrix - 设置预设矩阵
+const setConvolvePreset = (preset: string) => {
+  const order = localProps.value.order || 3
+  const presets: Record<string, Record<number, string>> = {
+    sharpen: {
+      3: '0 -1 0 -1 5 -1 0 -1 0',
+      5: '0 0 -1 0 0 0 -1 -1 -1 0 -1 -1 9 -1 -1 0 -1 -1 -1 0 0 0 -1 0 0'
+    },
+    blur: {
+      3: '1 1 1 1 1 1 1 1 1',
+      5: '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+    },
+    edge: {
+      3: '0 1 0 1 -4 1 0 1 0',
+      5: '0 0 1 0 0 0 1 1 1 0 1 1 -12 1 1 0 1 1 1 0 0 0 1 0 0'
+    },
+    emboss: {
+      3: '-2 -1 0 -1 1 1 0 1 2',
+      5: '-2 -1 -1 -1 0 -1 -1 0 1 1 -1 0 1 1 1 -1 1 1 1 1 0 1 1 1 2'
+    }
+  }
+  
+  if (presets[preset] && presets[preset][order]) {
+    localProps.value.kernelMatrix = presets[preset][order]
+    emitUpdate()
+  }
+}
+
+// feTurbulence - 更新基础频率
+const updateBaseFrequency = () => {
+  const x = localProps.value.baseFrequencyX ?? 0.05
+  const y = localProps.value.baseFrequencyY ?? 0.05
+  localProps.value.baseFrequency = `${x},${y}`
+  emitUpdate()
+}
+
 // 获取输入源选项（包括 SourceGraphic、SourceAlpha 和之前的 result 别名）
 const getInputOptions = () => {
   if (!props.availableAliases || props.availableAliases.length === 0) {
@@ -638,6 +1114,14 @@ watch(() => props.modelValue, (newVal) => {
     localProps.value.radiusY = parseFloat(y)
   }
   
+  // 特殊处理 feTurbulence 的 baseFrequency
+  if (props.type === 'feTurbulence') {
+    const freq = newVal?.baseFrequency?.toString() || '0.05,0.05'
+    const [x, y] = freq.includes(',') ? freq.split(',') : [freq, freq]
+    localProps.value.baseFrequencyX = parseFloat(x)
+    localProps.value.baseFrequencyY = parseFloat(y)
+  }
+  
   // 特殊处理 feComponentTransfer 的四个通道
   if (props.type === 'feComponentTransfer') {
     localProps.value.funcR = newVal?.funcR || { type: 'identity' }
@@ -675,6 +1159,13 @@ const emitUpdate = () => {
     updatedProps.radius = `${updatedProps.radiusX || 0},${updatedProps.radiusY || 0}`
     delete updatedProps.radiusX
     delete updatedProps.radiusY
+  }
+  
+  // 重构 baseFrequency
+  if (props.type === 'feTurbulence') {
+    updatedProps.baseFrequency = `${updatedProps.baseFrequencyX || 0.05},${updatedProps.baseFrequencyY || 0.05}`
+    delete updatedProps.baseFrequencyX
+    delete updatedProps.baseFrequencyY
   }
   
   emit('update:modelValue', updatedProps)
