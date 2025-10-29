@@ -429,6 +429,52 @@
       </el-text>
     </template>
 
+    <!-- feMerge -->
+    <template v-else-if="type === 'feMerge'">
+      <div class="space-y-3">
+        <div class="flex justify-between items-center">
+          <span class="font-semibold text-gray-700">合并的输入源：</span>
+          <el-button type="primary" size="small" @click="addMergeInput">
+            <span class="i-carbon-add mr-1"></span>
+            添加输入源
+          </el-button>
+        </div>
+        
+        <div v-if="!localProps.inputs || localProps.inputs.length === 0" class="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded">
+          暂无输入源，点击"添加输入源"按钮添加
+        </div>
+        
+        <div v-else class="space-y-2">
+          <div 
+            v-for="(input, index) in localProps.inputs" 
+            :key="index"
+            class="flex items-center gap-2 p-3 bg-gray-50 rounded border border-gray-200"
+          >
+            <span class="font-semibold text-gray-600 min-w-[30px]">{{ index + 1 }}.</span>
+            <el-select 
+              v-model="localProps.inputs[index]" 
+              @change="emitUpdate"
+              :options="getInputOptions()"
+              class="flex-1"
+              placeholder="选择输入源"
+            />
+            <el-button 
+              type="danger" 
+              size="small" 
+              @click="removeMergeInput(index)"
+              :disabled="localProps.inputs.length === 1"
+            >
+              <span class="i-carbon-trash-can"></span>
+            </el-button>
+          </div>
+        </div>
+        
+        <el-text type="info" size="small">
+          feMerge 会按顺序将多个输入源叠加合并，后面的层会覆盖在前面的层之上
+        </el-text>
+      </div>
+    </template>
+
     <!-- 其他过滤器类型暂不在 FilterPropsEditor 中实现 -->
     <template v-else>
       <el-text type="info">该过滤器类型暂未在此组件实现</el-text>
@@ -524,6 +570,24 @@ const onCompositeOperatorChange = () => {
     delete localProps.value.k4
   }
   emitUpdate()
+}
+
+// feMerge - 添加输入源
+const addMergeInput = () => {
+  if (!localProps.value.inputs) {
+    localProps.value.inputs = []
+  }
+  // 默认添加 SourceGraphic
+  localProps.value.inputs.push('SourceGraphic')
+  emitUpdate()
+}
+
+// feMerge - 删除输入源
+const removeMergeInput = (index: number) => {
+  if (localProps.value.inputs && localProps.value.inputs.length > 1) {
+    localProps.value.inputs.splice(index, 1)
+    emitUpdate()
+  }
 }
 
 // 获取输入源选项（包括 SourceGraphic、SourceAlpha 和之前的 result 别名）
