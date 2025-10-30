@@ -7,7 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "pnpm --filter demo dev",
+    "dev": "concurrently \"pnpm --filter core dev\" \"pnpm --filter demo dev\"",
+    "dev:core": "pnpm --filter core dev",
+    "dev:demo": "pnpm --filter demo dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
@@ -15,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "concurrently": "^9.2.1",
     "typescript": "^5.0.0"
   },
   "engines": {
