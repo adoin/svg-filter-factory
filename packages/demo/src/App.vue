@@ -723,7 +723,22 @@ const previewCode = computed(() => {
     return `    {\n      ${parts.join(',\n      ')}\n    }`
   })
   
-  return `register({\n  id: '${newFilterId.value}',\n  config: [\n${configArray.join(',\n')}\n  ]\n})`
+  return `// 1. 导入 SVG Filter Factory
+import { register, render } from '@svg-filter-factory/core'
+
+// 2. 注册过滤器
+register({
+  id: '${newFilterId.value}',
+  config: [
+${configArray.join(',\n')}
+  ]
+})
+
+// 3. 渲染过滤器到页面
+render('${newFilterId.value}')
+
+// 4. 应用到元素
+// document.getElementById('myElement').style.filter = 'url(#${newFilterId.value})'`
 })
 
 // 高亮后的代码

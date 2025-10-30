@@ -11,6 +11,7 @@
     "dev:core": "pnpm --filter core dev",
     "dev:demo": "pnpm --filter demo dev",
     "build": "pnpm -r build",
+    "pub": "cd packages/core && pnpm build && npm publish --access public && cd ..",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "type-check": "pnpm -r type-check"
