@@ -177,93 +177,82 @@ gsap.to({ hue: 0 }, {
   }
 }
 
-// 3. 投影移动动画
-const shadowMoveExample = {
-  id: 'shadow-move',
-  name: '投影移动',
-  description: '阴影位置动态变化',
-  element: '<img src="https://picsum.photos/200/200" class="rounded-lg" />',
+// 获取 base URL
+const baseUrl = import.meta.env.BASE_URL
+
+// 3. 水波纹效果动画
+const waterRippleExample = {
+  id: 'water-ripple',
+  name: '水波纹效果',
+  description: '模拟湖面水波纹动态效果',
+  element: `<div class="relative w-[400px] h-[300px] overflow-hidden rounded-lg shadow-xl" style="filter: none !important;">
+    <div class="absolute inset-0" style="background-image: url('${baseUrl}lake.jpg'); background-position: center bottom; background-size: cover;"></div>
+    <div id="water-surface" class="absolute bottom-0 w-full h-[66%]" style="background-image: url('${baseUrl}lake.jpg'); background-position: center bottom; background-size: cover; filter: url(#filter-water-ripple);"></div>
+  </div>`,
   filter: {
-    id: 'filter-shadow-move',
+    id: 'filter-water-ripple',
     config: [
-      { type: 'feDropShadow', props: { dx: 0, dy: 0, stdDeviation: '3,3', floodColor: '#ff00ff' }, result: 'shadow' }
+      { type: 'feTurbulence', props: { type: 'fractalNoise', numOctaves: 3, seed: 2, baseFrequency: '0.015,0.1' }, result: 'turbulence' },
+      { type: 'feDisplacementMap', props: { scale: 20, xChannelSelector: 'G', yChannelSelector: 'B', in: 'SourceGraphic', in2: 'turbulence' } }
     ]
   },
   code: `// 1. 注册过滤器
 register({
-  id: 'filter-shadow-move',
+  id: 'filter-water-ripple',
   config: [
-    { type: 'feDropShadow', props: { dx: 0, dy: 0, stdDeviation: '3,3', floodColor: '#ff00ff' }, result: 'shadow' }
+    { type: 'feTurbulence', props: { type: 'fractalNoise', numOctaves: 3, seed: 2, baseFrequency: '0.015,0.1' }, result: 'turbulence' },
+    { type: 'feDisplacementMap', props: { scale: 20, xChannelSelector: 'G', yChannelSelector: 'B', in: 'SourceGraphic', in2: 'turbulence' } }
   ]
 })
-render('filter-shadow-move')
+render('filter-water-ripple')
 
-// 2. GSAP 动画 - 阴影循环移动
-const tl = gsap.timeline({ repeat: -1 })
-tl.to({ dx: 0, dy: 0 }, {
-  dx: 20,
-  dy: 20,
-  duration: 1,
-  ease: 'power2.inOut',
+// 2. GSAP 动画 - 水波纹效果
+const feTurb = document.querySelector('#filter-water-ripple feTurbulence')
+gsap.to({}, {
+  duration: 8,
+  repeat: -1,
+  yoyo: true,
   onUpdate: function() {
-    const target = this.targets()[0]
-    // 注意：feDropShadow 需要更新 DOM 属性，不是 config
-    const filterEl = document.getElementById('filter-shadow-move')
-    const shadowEl = filterEl?.querySelector('feDropShadow')
-    if (shadowEl) {
-      shadowEl.setAttribute('dx', target.dx.toString())
-      shadowEl.setAttribute('dy', target.dy.toString())
+    const progress = this.progress()
+    const bfX = progress * 0.005 + 0.015
+    const bfY = progress * 0.05 + 0.1
+    const bfStr = bfX.toString() + ',' + bfY.toString()
+    if (feTurb) {
+      feTurb.setAttribute('baseFrequency', bfStr)
     }
   }
-}).to({ dx: 20, dy: 20 }, {
-  dx: -20,
-  dy: -20,
-  duration: 1,
-  ease: 'power2.inOut',
-  onUpdate: function() {
-    const target = this.targets()[0]
-    const filterEl = document.getElementById('filter-shadow-move')
-    const shadowEl = filterEl?.querySelector('feDropShadow')
-    if (shadowEl) {
-      shadowEl.setAttribute('dx', target.dx.toString())
-      shadowEl.setAttribute('dy', target.dy.toString())
-    }
-  }
-})`,
+})
+
+// 3. 应用到水面元素
+const waterSurface = document.getElementById('water-surface')
+if (waterSurface) {
+  waterSurface.style.filter = 'url(#filter-water-ripple)'
+}`,
   animate: () => {
     if (typeof window.gsap === 'undefined') return
     const gsap = (window as any).gsap
-    const tl = gsap.timeline({ repeat: -1 })
-    tl.to({ dx: 0, dy: 0 }, {
-      dx: 20,
-      dy: 20,
-      duration: 1,
-      ease: 'power2.inOut',
+    
+    const tl = gsap.to({}, {
+      duration: 8,
+      repeat: -1,
+      yoyo: true,
       onUpdate: function() {
-        const target = this.targets()[0]
-        const filterEl = document.getElementById('filter-shadow-move')
-        const shadowEl = filterEl?.querySelector('feDropShadow')
-        if (shadowEl) {
-          shadowEl.setAttribute('dx', target.dx.toString())
-          shadowEl.setAttribute('dy', target.dy.toString())
-        }
-      }
-    }).to({ dx: 20, dy: 20 }, {
-      dx: -20,
-      dy: -20,
-      duration: 1,
-      ease: 'power2.inOut',
-      onUpdate: function() {
-        const target = this.targets()[0]
-        const filterEl = document.getElementById('filter-shadow-move')
-        const shadowEl = filterEl?.querySelector('feDropShadow')
-        if (shadowEl) {
-          shadowEl.setAttribute('dx', target.dx.toString())
-          shadowEl.setAttribute('dy', target.dy.toString())
-        }
+        const progress = this.progress()
+        const bfX = progress * 0.005 + 0.015
+        const bfY = progress * 0.05 + 0.1
+        updateFilterConfig('filter-water-ripple', 'turbulence', 'baseFrequency', `${bfX},${bfY}`)
       }
     })
-    animations.set('shadow-move', tl)
+    
+    // 应用过滤器到水面元素
+    setTimeout(() => {
+      const waterSurface = document.getElementById('water-surface')
+      if (waterSurface) {
+        waterSurface.style.filter = 'url(#filter-water-ripple)'
+      }
+    }, 100)
+    
+    animations.set('water-ripple', tl)
   }
 }
 
@@ -459,7 +448,7 @@ button.addEventListener('click', function() {
 examples.value = [
   blurWaveExample,
   hueRotateExample,
-  shadowMoveExample,
+  waterRippleExample,
   turbulenceExample,
   glowPulseExample,
   buttonClickExample

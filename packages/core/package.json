@@ -1,6 +1,6 @@
 {
   "name": "@svg-filter-factory/core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Core SVG Filter Factory library",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",

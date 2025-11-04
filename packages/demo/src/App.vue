@@ -64,10 +64,29 @@
             </div>
             
             <div v-if="registeredFilters.length > 0" class="space-y-3">
-              <h3 class="text-xl font-semibold text-gray-700">已注册的过滤器：</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-600px overflow-y-auto">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="text-xl font-semibold text-gray-700">已注册的过滤器：</h3>
+                <el-input
+                  v-model="filterSearchQuery"
+                  placeholder="搜索过滤器 ID 或类型..."
+                  clearable
+                  class="w-[300px]"
+                  size="small"
+                >
+                  <template #prefix>
+                    <span class="i-carbon-search"></span>
+                  </template>
+                </el-input>
+              </div>
+              
+              <div v-if="filteredRegisteredFilters.length === 0" class="text-center py-8 text-gray-500">
+                <span class="i-carbon-search-locate text-4xl block mb-2"></span>
+                未找到匹配的过滤器
+              </div>
+              
+              <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-600px overflow-y-auto">
                 <div 
-                  v-for="filter in registeredFilters" 
+                  v-for="filter in filteredRegisteredFilters" 
                   :key="filter.id" 
                   class="border-2 border-purple-200 rounded-lg p-4 hover:shadow-lg transition-shadow bg-gradient-to-br from-purple-50 to-indigo-50"
                 >
@@ -328,9 +347,46 @@ const renderedFilters = ref<string[]>([])
 const currentFilter = ref('')
 const logs = ref<Array<{ time: string, message: string, type: 'info' | 'success' | 'error' }>>([])
 
+// 搜索状态
+const filterSearchQuery = ref('')
+
 // 表单状态
 const newFilterId = ref('')
 const newSubFilters = ref<Array<Partial<SubFilter>>>([])
+
+// 过滤已注册的过滤器
+const filteredRegisteredFilters = computed(() => {
+  if (!filterSearchQuery.value.trim()) {
+    return registeredFilters.value
+  }
+  
+  const query = filterSearchQuery.value.toLowerCase().trim()
+  
+  return registeredFilters.value.filter(filter => {
+    // 搜索 ID
+    if (filter.id.toLowerCase().includes(query)) {
+      return true
+    }
+    
+    // 搜索子过滤器类型
+    const hasMatchingType = filter.config.some(sub => 
+      sub.type.toLowerCase().includes(query)
+    )
+    if (hasMatchingType) {
+      return true
+    }
+    
+    // 搜索 result 别名
+    const hasMatchingResult = filter.config.some(sub => 
+      sub.result && sub.result.toLowerCase().includes(query)
+    )
+    if (hasMatchingResult) {
+      return true
+    }
+    
+    return false
+  })
+})
 
 // 添加日志
 const addLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {

@@ -457,7 +457,7 @@ function getOrCreateSvgContainer(options: SvgContainerOptions = {}): SVGDefsElem
   if (!svgContainer) {
     svgContainer = document.createElement('div');
     svgContainer.id = '__svg_filter_factory_container';
-    svgContainer.style.opacity = '0';
+    // 不需要设置 opacity，因为内部 SVG 已经处理了隐藏
     document.body.appendChild(svgContainer);
   }
   
@@ -465,10 +465,11 @@ function getOrCreateSvgContainer(options: SvgContainerOptions = {}): SVGDefsElem
   if (!svgDefs) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.id = '__svg_filter_factory_svg';
+    // 使用 position: absolute + width/height: 0 确保不占据布局空间
     svg.style.position = 'absolute';
     svg.style.width = '0';
     svg.style.height = '0';
-    svg.style.visibility = 'hidden';
+    // visibility: hidden 在 width/height=0 时是多余的，已移除
     
     // 设置 SVG 尺寸属性
     svg.setAttribute('width', width);
