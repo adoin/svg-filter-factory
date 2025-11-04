@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
     <!-- Header -->
-    <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 shadow-md">
+    <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 shadow-md sticky top-0 z-10">
       <div class="flex items-center gap-4">
         <h1 class="text-2xl font-bold">SVG Filter Factory Demo</h1>
         <div class="flex items-center gap-2">
