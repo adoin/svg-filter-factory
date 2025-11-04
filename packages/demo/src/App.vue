@@ -206,6 +206,20 @@
           
           <!-- 右侧：实时预览和代码 -->
           <div class="space-y-4">
+            <!-- 导入 JSON 功能 -->
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border-2 border-blue-200">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-lg font-semibold text-blue-700">快速导入</h3>
+                <el-button type="primary" size="small" @click="importFromClipboard">
+                  <span class="i-carbon-paste mr-1"></span>
+                  从剪贴板导入 JSON
+                </el-button>
+              </div>
+              <el-text type="info" size="small" class="block">
+                从"经典案例"或其他地方复制的过滤器 JSON 可以直接导入到表单中
+              </el-text>
+            </div>
+
             <!-- 实时预览效果 -->
             <div class="space-y-2">
               <h3 class="text-lg font-semibold text-gray-700">实时预览:</h3>
@@ -851,6 +865,179 @@ const copyCode = async () => {
     addLog('复制失败: ' + error, 'error')
     ElMessage.error('复制失败，请重试')
   }
+}
+
+// 从剪贴板导入 JSON
+const importFromClipboard = async () => {
+  try {
+    // 1. 读取剪贴板内容
+    const clipboardText = await navigator.clipboard.readText()
+    
+    if (!clipboardText || !clipboardText.trim()) {
+      ElMessage.warning('剪贴板为空')
+      return
+    }
+    
+    addLog('正在解析剪贴板内容...', 'info')
+    
+    // 2. 验证是否为有效的 JSON
+    let jsonData: any
+    try {
+      jsonData = JSON.parse(clipboardText)
+    } catch (parseError) {
+      ElMessage.error('剪贴板内容不是有效的 JSON 格式')
+      addLog('JSON 解析失败: ' + parseError, 'error')
+      return
+    }
+    
+    // 3. 验证 JSON 结构
+    if (!jsonData || typeof jsonData !== 'object') {
+      ElMessage.error('JSON 数据格式不正确')
+      return
+    }
+    
+    // 4. 转换过滤器配置
+    const convertedConfig = convertJsonToFormData(jsonData)
+    
+    if (!convertedConfig) {
+      ElMessage.error('无法识别的过滤器配置格式')
+      return
+    }
+    
+    // 5. 填充表单
+    newFilterId.value = convertedConfig.id || ''
+    newSubFilters.value = convertedConfig.config
+    
+    addLog(`成功导入过滤器配置: ${convertedConfig.id || '(未命名)'}`, 'success')
+    ElMessage.success('已从剪贴板导入配置！')
+    
+    // 6. 滚动到创建区域
+    setTimeout(() => {
+      const builderElement = document.querySelector('#filter-builder')
+      if (builderElement) {
+        builderElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 100)
+    
+  } catch (error) {
+    addLog('导入失败: ' + error, 'error')
+    ElMessage.error('导入失败，请检查剪贴板权限或内容格式')
+  }
+}
+
+// 转换 JSON 数据到表单格式（处理二维值等特殊情况）
+const convertJsonToFormData = (jsonData: any): { id: string; config: Partial<SubFilter>[] } | null => {
+  try {
+    // 支持直接导入 FilterDefinition 格式
+    if (jsonData.id && jsonData.config && Array.isArray(jsonData.config)) {
+      return {
+        id: jsonData.id,
+        config: jsonData.config.map((sub: any) => convertSubFilter(sub))
+      }
+    }
+    
+    // 支持只导入 config 数组
+    if (Array.isArray(jsonData)) {
+      return {
+        id: '',
+        config: jsonData.map((sub: any) => convertSubFilter(sub))
+      }
+    }
+    
+    return null
+  } catch (error) {
+    console.error('转换失败:', error)
+    return null
+  }
+}
+
+// 转换单个子过滤器（处理二维值）
+const convertSubFilter = (sub: any): Partial<SubFilter> => {
+  const converted: Partial<SubFilter> = {
+    type: sub.type,
+    result: sub.result,
+    in: sub.in,
+    props: {}
+  }
+  
+  if (!sub.props) {
+    return converted
+  }
+  
+  // 深拷贝 props
+  converted.props = JSON.parse(JSON.stringify(sub.props))
+  
+  // 特殊处理：将二维值字符串转换为表单需要的格式
+  const props = converted.props as any
+  
+  // stdDeviation: "5,5" 需要保持字符串格式（已正确）
+  // baseFrequency: "0.05,0.05" 需要保持字符串格式（已正确）
+  // radius: "2,2" 需要保持字符串格式（已正确）
+  // order: "3,3" 需要保持字符串格式（已正确）
+  
+  // 特殊处理 feConvolveMatrix 的 order（可能需要拆分为 orderX 和 orderY）
+  if (sub.type === 'feConvolveMatrix' && props.order) {
+    const orderStr = props.order.toString()
+    if (orderStr.includes(',')) {
+      const [x, y] = orderStr.split(',').map((v: string) => parseFloat(v.trim()))
+      props.orderX = x
+      props.orderY = y
+    } else {
+      props.orderX = parseFloat(orderStr)
+      props.orderY = parseFloat(orderStr)
+    }
+  }
+  
+  // 特殊处理 feTurbulence 的 baseFrequency（可能需要拆分）
+  if (sub.type === 'feTurbulence' && props.baseFrequency) {
+    const freqStr = props.baseFrequency.toString()
+    if (freqStr.includes(',')) {
+      const [x, y] = freqStr.split(',').map((v: string) => parseFloat(v.trim()))
+      props.baseFrequencyX = x
+      props.baseFrequencyY = y
+    } else {
+      const freq = parseFloat(freqStr)
+      props.baseFrequencyX = freq
+      props.baseFrequencyY = freq
+    }
+  }
+  
+  // 特殊处理 feMorphology 的 radius（可能需要拆分）
+  if (sub.type === 'feMorphology' && props.radius) {
+    const radiusStr = props.radius.toString()
+    if (radiusStr.includes(',')) {
+      const [x, y] = radiusStr.split(',').map((v: string) => parseFloat(v.trim()))
+      props.radiusX = x
+      props.radiusY = y
+    } else {
+      const radius = parseFloat(radiusStr)
+      props.radiusX = radius
+      props.radiusY = radius
+    }
+  }
+  
+  // 特殊处理 feGaussianBlur 的 stdDeviation（可能需要拆分）
+  if (sub.type === 'feGaussianBlur' && props.stdDeviation) {
+    const stdStr = props.stdDeviation.toString()
+    if (stdStr.includes(',')) {
+      const [x, y] = stdStr.split(',').map((v: string) => parseFloat(v.trim()))
+      props.stdDeviationX = x
+      props.stdDeviationY = y
+    } else {
+      const std = parseFloat(stdStr)
+      props.stdDeviationX = std
+      props.stdDeviationY = std
+    }
+  }
+  
+  // 特殊处理 feImage 的 preserveAspectRatio（可能需要拆分）
+  if (sub.type === 'feImage' && props.preserveAspectRatio) {
+    const parts = props.preserveAspectRatio.toString().split(' ')
+    props.align = parts[0] || 'xMidYMid'
+    props.meetOrSlice = parts[1] || 'meet'
+  }
+  
+  return converted
 }
 
 onMounted(() => {
