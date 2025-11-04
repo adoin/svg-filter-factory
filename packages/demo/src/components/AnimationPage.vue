@@ -29,7 +29,7 @@
                 <div :id="`preview-${example.id}`" class="relative">
                   <div 
                     :id="`target-${example.id}`" 
-                    :style="{ filter: `url(#filter-${example.id})` }"
+                    :style="example.applyFilterToRoot !== false ? { filter: `url(#filter-${example.id})` } : {}"
                     v-html="example.element"
                   />
                 </div>
@@ -75,6 +75,7 @@ interface AnimationExample {
   filter: any
   code: string
   animate: () => void
+  applyFilterToRoot?: boolean  // 是否在外层容器应用过滤器，默认 true
 }
 
 const examples = ref<AnimationExample[]>([])
@@ -185,9 +186,9 @@ const waterRippleExample = {
   id: 'water-ripple',
   name: '水波纹效果',
   description: '模拟湖面水波纹动态效果',
-  element: `<div class="relative w-[400px] h-[300px] overflow-hidden rounded-lg shadow-xl" style="filter: none !important;">
-    <div class="absolute inset-0" style="background-image: url('${baseUrl}lake.jpg'); background-position: center bottom; background-size: cover;"></div>
-    <div id="water-surface" class="absolute bottom-0 w-full h-[66%]" style="background-image: url('${baseUrl}lake.jpg'); background-position: center bottom; background-size: cover; filter: url(#filter-water-ripple);"></div>
+  applyFilterToRoot: false,  // 不在外层应用过滤器
+  element: `<div style="position: relative; width: 400px; height: 300px; overflow: hidden; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); background-image: url('${baseUrl}lake.jpg'); background-position: center bottom; background-size: cover;">
+    <div id="water-surface" style="position: absolute; bottom: 0; width: 100%; height: 66%; background-image: url('${baseUrl}lake.jpg'); background-position: center bottom; background-size: cover; filter: url(#filter-water-ripple);"></div>
   </div>`,
   filter: {
     id: 'filter-water-ripple',
@@ -206,8 +207,7 @@ register({
 })
 render('filter-water-ripple')
 
-// 2. GSAP 动画 - 水波纹效果
-const feTurb = document.querySelector('#filter-water-ripple feTurbulence')
+// 2. GSAP 动画 - 使用 updateFilterConfig 动态更新
 gsap.to({}, {
   duration: 8,
   repeat: -1,
@@ -216,10 +216,8 @@ gsap.to({}, {
     const progress = this.progress()
     const bfX = progress * 0.005 + 0.015
     const bfY = progress * 0.05 + 0.1
-    const bfStr = bfX.toString() + ',' + bfY.toString()
-    if (feTurb) {
-      feTurb.setAttribute('baseFrequency', bfStr)
-    }
+    // 使用 updateFilterConfig 更新过滤器属性
+    updateFilterConfig('filter-water-ripple', 'turbulence', 'baseFrequency', \`\${bfX},\${bfY}\`)
   }
 })
 
@@ -240,6 +238,7 @@ if (waterSurface) {
         const progress = this.progress()
         const bfX = progress * 0.005 + 0.015
         const bfY = progress * 0.05 + 0.1
+        // 使用 updateFilterConfig 更新过滤器属性
         updateFilterConfig('filter-water-ripple', 'turbulence', 'baseFrequency', `${bfX},${bfY}`)
       }
     })
