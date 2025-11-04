@@ -597,27 +597,43 @@
       </el-form-item>
       
       <el-form-item label="矩阵阶数 (order)">
-        <el-input-number 
-          v-model="localProps.order" 
-          :min="3" 
-          :max="5"
-          :step="1"
-          size="small"
-          @blur="onConvolveOrderChange"
-        />
+        <el-row :gutter="10">
+          <el-col :span="12">
+            <el-input-number 
+              v-model="localProps.orderX" 
+              :min="3" 
+              :max="5"
+              :step="1"
+              size="small"
+              @blur="updateOrder"
+              placeholder="X"
+            />
+          </el-col>
+          <el-col :span="12">
+            <el-input-number 
+              v-model="localProps.orderY" 
+              :min="3" 
+              :max="5"
+              :step="1"
+              size="small"
+              @blur="updateOrder"
+              placeholder="Y"
+            />
+          </el-col>
+        </el-row>
       </el-form-item>
       
       <el-form-item label="卷积核矩阵 (kernelMatrix)">
         <el-input
           v-model="localProps.kernelMatrix"
           type="textarea"
-          :rows="localProps.order || 3"
+          :rows="localProps.orderX || 3"
           @blur="emitUpdate"
           placeholder="输入矩阵值，用空格分隔"
           class="font-mono"
         />
         <el-text type="info" size="small" class="block mt-1">
-          {{ localProps.order }}x{{ localProps.order }} 矩阵，共需 {{ (localProps.order || 3) * (localProps.order || 3) }} 个值
+          {{ localProps.orderX || 3 }}x{{ localProps.orderY || 3 }} 矩阵，共需 {{ (localProps.orderX || 3) * (localProps.orderY || 3) }} 个值
         </el-text>
       </el-form-item>
       
@@ -1353,16 +1369,28 @@ const removeMergeInput = (index: number) => {
   }
 }
 
+// feConvolveMatrix - 更新 order
+const updateOrder = () => {
+  const orderX = localProps.value.orderX || 3
+  const orderY = localProps.value.orderY || 3
+  localProps.value.order = `${orderX},${orderY}`
+  emitUpdate()
+}
+
 // feConvolveMatrix - 阶数改变时更新矩阵
 const onConvolveOrderChange = () => {
-  const order = localProps.value.order || 3
+  const orderX = localProps.value.orderX || 3
+  const orderY = localProps.value.orderY || 3
+  const order = orderX
   // 不自动更新 kernelMatrix，让用户手动输入或选择预设
   emitUpdate()
 }
 
 // feConvolveMatrix - 设置预设矩阵
 const setConvolvePreset = (preset: string) => {
-  const order = localProps.value.order || 3
+  const orderX = localProps.value.orderX || 3
+  const orderY = localProps.value.orderY || 3
+  const order = orderX
   const presets: Record<string, Record<number, string>> = {
     sharpen: {
       3: '0 -1 0 -1 5 -1 0 -1 0',
@@ -1450,6 +1478,14 @@ watch(() => props.modelValue, (newVal) => {
     const [x, y] = freq.includes(',') ? freq.split(',') : [freq, freq]
     localProps.value.baseFrequencyX = parseFloat(x)
     localProps.value.baseFrequencyY = parseFloat(y)
+  }
+  
+  // 特殊处理 feConvolveMatrix 的 order
+  if (props.type === 'feConvolveMatrix') {
+    const ord = newVal?.order?.toString() || '3,3'
+    const [x, y] = ord.includes(',') ? ord.split(',') : [ord, ord]
+    localProps.value.orderX = parseFloat(x)
+    localProps.value.orderY = parseFloat(y)
   }
   
   // 特殊处理 feComponentTransfer 的四个通道

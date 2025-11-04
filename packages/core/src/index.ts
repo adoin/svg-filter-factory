@@ -65,7 +65,7 @@ export interface ColorMatrixProps {
 }
 
 export interface ConvolveMatrixProps {
-  order?: number;
+  order?: number | string;
   kernelMatrix?: string;
   bias?: number;
   edgeMode?: 'duplicate' | 'wrap' | 'none';

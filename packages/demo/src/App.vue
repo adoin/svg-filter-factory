@@ -2,10 +2,52 @@
   <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
     <!-- Header -->
     <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 shadow-md">
-      <h1 class="text-2xl font-bold">SVG Filter Factory Demo</h1>
+      <div class="flex items-center gap-4">
+        <h1 class="text-2xl font-bold">SVG Filter Factory Demo</h1>
+        <div class="flex items-center gap-2">
+          <el-button 
+            v-if="currentPage !== 'home'" 
+            type="default" 
+            size="small"
+            @click="currentPage = 'home'"
+            class="bg-white/20 hover:bg-white/30 border-white/30 text-white"
+          >
+            <span class="i-carbon-arrow-left mr-1"></span>
+            返回首页
+          </el-button>
+          <el-button 
+            v-if="currentPage === 'home'" 
+            type="default" 
+            size="small"
+            @click="currentPage = 'examples'"
+            class="bg-white/20 hover:bg-white/30 border-white/30 text-white"
+          >
+            <span class="i-carbon-apps mr-1"></span>
+            经典案例
+          </el-button>
+          <el-button 
+            v-if="currentPage === 'home'" 
+            type="default" 
+            size="small"
+            @click="currentPage = 'animations'"
+            class="bg-white/20 hover:bg-white/30 border-white/30 text-white"
+          >
+            <span class="i-carbon-play mr-1"></span>
+            动画案例
+          </el-button>
+        </div>
+      </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+    <!-- 案例页面 -->
+    <ExamplesPage v-if="currentPage === 'examples'" @back-home="currentPage = 'home'" />
+    
+    <!-- 动画案例页面 -->
+    <AnimationPage v-if="currentPage === 'animations'" />
+
+    <!-- 首页 -->
+    <div v-if="currentPage === 'home'" class="transition-all duration-300 mr-[400px]">
+      <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
       <!-- 1. 快速示例区 + 操作日志 -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- 左侧：快速示例 -->
@@ -23,7 +65,7 @@
             
             <div v-if="registeredFilters.length > 0" class="space-y-3">
               <h3 class="text-xl font-semibold text-gray-700">已注册的过滤器：</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-600px overflow-y-auto">
                 <div 
                   v-for="filter in registeredFilters" 
                   :key="filter.id" 
@@ -51,15 +93,16 @@
                     <el-button type="success" size="small" class="flex-1" @click="renderAndApplyFilter(filter.id)">
                       渲染并应用
                     </el-button>
-                    <el-button type="info" size="small" class="flex-1" @click="renderFilter(filter.id)">
-                      仅渲染
-                    </el-button>
-                  </div>
-                  <div class="mt-2 flex gap-2">
                     <el-button type="primary" size="small" class="flex-1" @click="copyFilterToBuilder(filter)">
                       <span class="i-carbon-copy mr-1"></span>
                       复制
                     </el-button>
+                    <el-button type="info" size="small" class="flex-1" @click="copyFilterJson(filter)">
+                      <span class="i-carbon-document mr-1"></span>
+                      复制JSON
+                    </el-button>
+                  </div>
+                  <div class="mt-2 flex gap-2">
                     <el-button type="danger" size="small" class="flex-1" @click="deleteFilterById(filter.id)">
                       <span class="i-carbon-trash-can mr-1"></span>
                       删除
@@ -95,120 +138,6 @@
         </section>
       </div>
 
-      <!-- 2. 效果预览区 -->
-      <section class="bg-white rounded-xl shadow-md p-6">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-purple-500 pb-2">效果预览</h2>
-        <div class="space-y-4">
-          <div class="bg-gray-50 rounded-lg p-4">
-            <div class="flex items-center gap-3 mb-3">
-              <strong class="text-gray-700">当前应用：</strong> 
-              <code class="bg-purple-100 text-purple-800 px-3 py-1 rounded font-mono text-sm">
-                {{ currentFilter || '无' }}
-              </code>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <el-button 
-                @click="applyFilter('')" 
-                :type="currentFilter === '' ? 'primary' : ''"
-                size="small"
-              >
-                无过滤器
-              </el-button>
-              <el-button 
-                v-for="filter in renderedFilters" 
-                :key="filter"
-                @click="applyFilter(`url(#${filter})`)" 
-                :type="currentFilter === `url(#${filter})` ? 'primary' : ''"
-                size="small"
-                class="font-mono"
-              >
-                {{ filter }}
-              </el-button>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- SVG图形 -->
-            <div class="flex flex-col">
-              <h4 class="text-center font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-t-lg">
-                SVG 图形
-              </h4>
-              <div class="flex justify-center items-center h-240px bg-gradient-to-br from-gray-50 to-blue-50 rounded-b-lg shadow p-5">
-                <svg width="100%" height="200" viewBox="0 0 200 200">
-                  <defs>
-                    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-                      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
-                    </linearGradient>
-                  </defs>
-                  <circle 
-                    cx="100" 
-                    cy="100" 
-                    r="60" 
-                    fill="url(#gradient1)"
-                    :style="{ filter: currentFilter ? currentFilter : 'none' }"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <!-- 文本 -->
-            <div class="flex flex-col">
-              <h4 class="text-center font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-t-lg">
-                文本
-              </h4>
-              <div class="flex justify-center items-center h-240px bg-gradient-to-br from-gray-50 to-blue-50 rounded-b-lg shadow p-5">
-                <span 
-                  class="text-5xl font-bold"
-                  :style="{ 
-                    filter: currentFilter ? currentFilter : 'none',
-                    color: '#9b4607'
-                  }"
-                >
-                  FILTER
-                </span>
-              </div>
-            </div>
-
-            <!-- 图片 -->
-            <div class="flex flex-col">
-              <h4 class="text-center font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-t-lg">
-                图片
-              </h4>
-              <div class="flex justify-center items-center h-240px bg-gradient-to-br from-gray-50 to-blue-50 rounded-b-lg shadow p-5">
-                <img 
-                  src="https://picsum.photos/160/160" 
-                  class="rounded-lg shadow-md"
-                  :style="{ filter: currentFilter ? currentFilter : 'none' }"
-                />
-              </div>
-            </div>
-
-            <!-- SVG文本 -->
-            <div class="flex flex-col">
-              <h4 class="text-center font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-t-lg">
-                SVG 文本
-              </h4>
-              <div class="flex justify-center items-center h-240px bg-gradient-to-br from-gray-50 to-blue-50 rounded-b-lg shadow p-5">
-                <svg width="100%" height="200" viewBox="0 0 500 200">
-                  
-                  <text 
-                    x="250" 
-                    y="120" 
-                    text-anchor="middle" 
-                    font-size="22" 
-                    font-weight="bold" 
-                    fill="#667eea"
-                    :filter="currentFilter ? currentFilter : 'none'"
-                  >
-                    SVG TEXT
-                  </text>
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <!-- 3. 动态表单创建过滤器 -->
       <section id="filter-builder" class="bg-white rounded-xl shadow-md p-6">
@@ -319,6 +248,15 @@
       </section>
 
     </main>
+    </div>
+
+    <!-- 共享预览组件（固定在右侧） -->
+    <FilterPreview
+      v-if="currentPage === 'home'"
+      :current-filter="currentFilter"
+      :rendered-filters="renderedFilters"
+      @apply-filter="applyFilter"
+    />
   </div>
 </template>
 
@@ -326,6 +264,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import FilterPropsEditor from './components/FilterPropsEditor.vue'
+import FilterPreview from './components/FilterPreview.vue'
+import ExamplesPage from './components/ExamplesPage.vue'
+import AnimationPage from './components/AnimationPage.vue'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import 'highlight.js/styles/atom-one-dark.css'
@@ -367,6 +308,7 @@ const filterTypeOptions = [
 ]
 
 // 状态管理
+const currentPage = ref<'home' | 'examples' | 'animations'>('home')
 const registeredFilters = ref<FilterDefinition[]>([])
 const renderedFilters = ref<string[]>([])
 const currentFilter = ref('')
@@ -479,16 +421,16 @@ const clearAllFilters = () => {
   addLog('已清除所有过滤器', 'info')
 }
 
-// 仅渲染过滤器（不应用）
-const renderFilter = (filterId: string) => {
+// 复制过滤器JSON
+const copyFilterJson = async (filter: FilterDefinition) => {
   try {
-    render(filterId)
-    if (!renderedFilters.value.includes(filterId)) {
-      renderedFilters.value.push(filterId)
-    }
-    addLog(`成功渲染过滤器: ${filterId}`, 'success')
+    const json = JSON.stringify(filter, null, 2)
+    await navigator.clipboard.writeText(json)
+    addLog(`已复制过滤器 JSON: ${filter.id}`, 'success')
+    ElMessage.success('JSON 已复制到剪贴板！')
   } catch (error) {
-    addLog(`渲染过滤器失败: ${error}`, 'error')
+    addLog(`复制 JSON 失败: ${error}`, 'error')
+    ElMessage.error('复制失败，请重试')
   }
 }
 
@@ -506,11 +448,13 @@ const renderAndApplyFilter = (filterId: string) => {
   }
 }
 
-// 应用过滤器
+// 应用过滤器（供预览组件调用）
 const applyFilter = (filter: string) => {
   currentFilter.value = filter
   const filterName = filter ? filter.replace('url(#', '').replace(')', '') : '无'
   addLog(`应用过滤器: ${filterName}`, 'info')
+  // 设置全局函数供案例页面调用
+  ;(window as any).__applyFilter = (f: string) => applyFilter(f)
 }
 
 // 动态表单 - 添加子过滤器（根据类型设置合理的默认值）
@@ -535,7 +479,7 @@ const getDefaultSubFilter = (type: string = 'feGaussianBlur') => {
     feComposite: { props: { operator: 'over', in: 'SourceGraphic', in2: 'SourceAlpha' }, result: 'composite' },
     feMerge: { props: { inputs: ['SourceGraphic'] }, result: 'merge' },
     feMorphology: { props: { in: 'SourceGraphic', operator: 'erode', radius: '0,0' }, result: 'morphology' },
-    feConvolveMatrix: { props: { in: 'SourceGraphic', order: 3, kernelMatrix: '0 -1 0 -1 5 -1 0 -1 0', bias: 0, edgeMode: 'duplicate' }, result: 'convolve' },
+    feConvolveMatrix: { props: { in: 'SourceGraphic', order: '3,3', kernelMatrix: '0 -1 0 -1 5 -1 0 -1 0', bias: 0, edgeMode: 'duplicate' }, result: 'convolve' },
     feDisplacementMap: { props: { scale: 50, xChannelSelector: 'R', yChannelSelector: 'G', in: 'SourceGraphic', in2: 'SourceGraphic' }, result: 'displace' },
     feSpecularLighting: { props: { in: 'SourceGraphic', lightType: 'distant', azimuth: 45, elevation: 30, surfaceScale: 1, specularConstant: 1, specularExponent: 20, lightingColor: '#ffffff' }, result: 'specular' },
     feDiffuseLighting: { props: { in: 'SourceGraphic', lightType: 'distant', azimuth: 45, elevation: 30, surfaceScale: 1, diffuseConstant: 1, lightingColor: '#ffffff' }, result: 'diffuse' },
