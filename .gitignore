@@ -5,3 +5,4 @@ dist
 .cursor/
 .env.local
 .env.*.local
+*.tsbuildinfo

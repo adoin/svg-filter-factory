@@ -59,6 +59,13 @@ import javascript from 'highlight.js/lib/languages/javascript'
 
 hljs.registerLanguage('javascript', javascript)
 
+// 声明全局 GSAP 类型
+declare global {
+  interface Window {
+    gsap: any
+  }
+}
+
 // 定义动画案例
 interface AnimationExample {
   id: string
