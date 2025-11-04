@@ -309,7 +309,7 @@ const glowPulseExample = {
   id: 'glow-pulse',
   name: '发光脉冲',
   description: '外发光强度脉冲变化',
-  element: '<svg width="200" height="100" viewBox="0 0 200 100"><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-size="48" font-weight="bold" fill="#ff00ff">GLOW</text></svg>',
+  element: '<svg width="400" height="200" viewBox="0 0 400 200"><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-size="28" font-weight="bold" fill="#ff00ff">GLOW</text></svg>',
   filter: {
     id: 'filter-glow-pulse',
     config: [
@@ -410,7 +410,7 @@ button.addEventListener('click', function() {
     if (typeof window.gsap === 'undefined') return
     const gsap = (window as any).gsap
     
-    // 自动播放：每隔 3 秒触发一次扰动
+    // 创建 Timeline，初始暂停
     const turbVal = { val: 0.000001 }
     const btTl = gsap.timeline({ 
       paused: true,
@@ -422,14 +422,7 @@ button.addEventListener('click', function() {
     btTl.to(turbVal, 0.2, { val: 0.2 })
        .to(turbVal, 0.2, { val: 0.000001 })
     
-    // 自动触发动画
-    const autoPlay = () => {
-      btTl.restart()
-      setTimeout(autoPlay, 3000)
-    }
-    autoPlay()
-    
-    // 同时支持点击触发
+    // 只在点击时触发，不自动播放
     setTimeout(() => {
       const button = document.getElementById('click-button')
       if (button) {
