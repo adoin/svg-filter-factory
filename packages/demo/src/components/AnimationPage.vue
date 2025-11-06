@@ -465,40 +465,20 @@ const copyCode = async (example: AnimationExample) => {
   }
 }
 
-// 加载 GSAP
-const loadGSAP = () => {
-  return new Promise((resolve, reject) => {
-    if (typeof window.gsap !== 'undefined') {
-      resolve(true)
-      return
-    }
-    const script = document.createElement('script')
-    script.src = 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js'
-    script.onload = () => resolve(true)
-    script.onerror = () => reject(new Error('GSAP 加载失败'))
-    document.head.appendChild(script)
-  })
-}
-
 // 初始化
-onMounted(async () => {
-  try {
-    await loadGSAP()
-    // 注册所有过滤器
+onMounted(() => {
+  // 注册所有过滤器
+  examples.value.forEach(example => {
+    register(example.filter)
+    render(example.filter.id)
+  })
+  // 延迟启动所有动画
+  setTimeout(() => {
     examples.value.forEach(example => {
-      register(example.filter)
-      render(example.filter.id)
+      example.animate()
     })
-    // 延迟启动所有动画
-    setTimeout(() => {
-      examples.value.forEach(example => {
-        example.animate()
-      })
-    }, 500)
-    ElMessage.success('动画案例已加载并自动播放')
-  } catch (error) {
-    ElMessage.error('GSAP 加载失败，动画无法播放')
-  }
+  }, 500)
+  ElMessage.success('动画案例已加载并自动播放')
 })
 
 // 清理
