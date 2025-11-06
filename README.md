@@ -6,6 +6,19 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.5-green)](https://vuejs.org/)
 
+## 📖 背景知识
+
+想要深入了解 SVG Filter 的历史、设计理念和技术演进？
+
+**👉 [阅读 Warm-up 文档：SVG Filter 技术分享](./warm-up.md)**
+
+这份文档从主讲人的视角讲述：
+- 🎭 传统样式的局限性
+- 🌟 SVG Filter 的诞生与发展历程
+- 🎨 17 种基元的分类与应用
+- ⚠️ 技术局限性与解决方案
+- 🔮 未来技术展望
+
 ## 🌟 在线演示
 
 **👉 [立即体验：https://adoin.github.io/svg-filter-factory/](https://adoin.github.io/svg-filter-factory/)**
