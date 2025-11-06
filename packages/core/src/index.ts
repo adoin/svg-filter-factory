@@ -439,19 +439,36 @@ function generateLightElement(props: SpecularLightingProps | DiffuseLightingProp
   }
 }
 
-// 获取或创建SVG容器
+// SVG 容器选项（影响容器本身的尺寸）
 export interface SvgContainerOptions {
-  width?: string;
-  height?: string;
-  viewBox?: string;
+  width?: string;      // SVG 容器宽度
+  height?: string;     // SVG 容器高度
+  viewBox?: string;    // SVG viewBox
+}
+
+// 滤镜区域选项（应用到 <filter> 元素）
+export interface FilterRegionOptions {
+  filterUnits?: 'objectBoundingBox' | 'userSpaceOnUse';
+  x?: string;          // 滤镜区域 X 坐标
+  y?: string;          // 滤镜区域 Y 坐标
+  width?: string;      // 滤镜区域宽度
+  height?: string;     // 滤镜区域高度
+}
+
+// 渲染配置（组合 SVG 容器 + 滤镜区域）
+export interface RenderConfig {
+  // SVG 容器配置（可选）
+  container?: SvgContainerOptions;
+  // 滤镜区域配置（可选）
+  filterRegion?: FilterRegionOptions;
 }
 
 function getOrCreateSvgContainer(options: SvgContainerOptions = {}): SVGDefsElement {
-  const {
-    width = '100%',
-    height = '200',
-    viewBox = '0 0 500 200'
-  } = options;
+  // 只提取 SVG 容器相关的属性（width, height, viewBox）
+  // x, y, filterUnits 是滤镜区域属性，不影响容器
+  const svgWidth = options.width || defaultSVGAttributes.width!;
+  const svgHeight = options.height || defaultSVGAttributes.height!;
+  const viewBox = options.viewBox || defaultSVGAttributes.viewBox!;
 
   let svgContainer = document.getElementById('__svg_filter_factory_container');
   if (!svgContainer) {
@@ -472,8 +489,8 @@ function getOrCreateSvgContainer(options: SvgContainerOptions = {}): SVGDefsElem
     // visibility: hidden 在 width/height=0 时是多余的，已移除
     
     // 设置 SVG 尺寸属性
-    svg.setAttribute('width', width);
-    svg.setAttribute('height', height);
+    svg.setAttribute('width', svgWidth);
+    svg.setAttribute('height', svgHeight);
     svg.setAttribute('viewBox', viewBox);
     
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -485,19 +502,50 @@ function getOrCreateSvgContainer(options: SvgContainerOptions = {}): SVGDefsElem
   
   return svgDefs;
 }
+// 默认 SVG 容器配置
 export const defaultSVGAttributes: SvgContainerOptions = {
   width: '100%',
   height: '200',
   viewBox: '0 0 500 200',
 }
+
+// 默认滤镜区域配置（应用到 <filter> 元素）
+export const defaultFilterAttributes: FilterRegionOptions = {
+  filterUnits: 'objectBoundingBox',
+  x: '-50%',
+  y: '-50%',
+  width: '200%',  // 必须是 200%，因为左右各扩展 50%
+  height: '200%'  // 必须是 200%，因为上下各扩展 50%
+}
+
+// 默认渲染配置（组合）
+export const defaultRenderConfig: Required<RenderConfig> = {
+  container: defaultSVGAttributes,
+  filterRegion: defaultFilterAttributes
+}
 /**
  * Render specific filter(s) by ID to the DOM
  * @param filterIds - Single filter ID or array of filter IDs to render
- * @param attrs - SVG attributes
+ * @param config - 渲染配置（SVG 容器 + 滤镜区域）
  */
-export function render(filterIds: string | string[], attrs: SvgContainerOptions = defaultSVGAttributes): void {
+export function render(filterIds: string | string[], config: RenderConfig = {}): void {
   const ids = Array.isArray(filterIds) ? filterIds : [filterIds];
-  const svgDefs = getOrCreateSvgContainer(attrs);
+  
+  // 合并配置：优先使用传入的，否则使用默认值
+  const containerConfig: SvgContainerOptions = {
+    ...defaultRenderConfig.container,
+    ...config.container
+  };
+  
+  const filterRegionConfig: Required<FilterRegionOptions> = {
+    filterUnits: config.filterRegion?.filterUnits ?? defaultRenderConfig.filterRegion.filterUnits!,
+    x: config.filterRegion?.x ?? defaultRenderConfig.filterRegion.x!,
+    y: config.filterRegion?.y ?? defaultRenderConfig.filterRegion.y!,
+    width: config.filterRegion?.width ?? defaultRenderConfig.filterRegion.width!,
+    height: config.filterRegion?.height ?? defaultRenderConfig.filterRegion.height!
+  };
+  
+  const svgDefs = getOrCreateSvgContainer(containerConfig);
   
   ids.forEach(filterId => {
     // 检查是否已渲染
@@ -508,8 +556,8 @@ export function render(filterIds: string | string[], attrs: SvgContainerOptions 
     }
     
     // 从localStorage加载配置
-    const config = loadFilterConfig(filterId);
-    if (!config) {
+    const filterConfig = loadFilterConfig(filterId);
+    if (!filterConfig) {
       console.error(`Filter "${filterId}" not found in localStorage. Please register it first.`);
       return;
     }
@@ -517,20 +565,29 @@ export function render(filterIds: string | string[], attrs: SvgContainerOptions 
     // 创建filter元素
     const filterElement = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
     filterElement.id = filterId;
-    filterElement.innerHTML = generateFilterElement({ id: filterId, config });
+    
+    // 设置滤镜区域属性
+    filterElement.setAttribute('filterUnits', filterRegionConfig.filterUnits);
+    filterElement.setAttribute('x', filterRegionConfig.x);
+    filterElement.setAttribute('y', filterRegionConfig.y);
+    filterElement.setAttribute('width', filterRegionConfig.width);
+    filterElement.setAttribute('height', filterRegionConfig.height);
+    
+    // 生成子滤镜
+    filterElement.innerHTML = generateFilterElement({ id: filterId, config: filterConfig });
     svgDefs.appendChild(filterElement);
     
-    console.log(`Filter "${filterId}" rendered successfully.`);
+    console.log(`Filter "${filterId}" rendered successfully with region: ${filterRegionConfig.x}, ${filterRegionConfig.y}, ${filterRegionConfig.width}, ${filterRegionConfig.height}`);
   });
 }
 /**
  * Render all filters to the DOM
- * @param attrs - SVG attributes
+ * @param config - 渲染配置（SVG 容器 + 滤镜区域）
  */
-export function renderAll(attrs = defaultSVGAttributes): void {
+export function renderAll(config: RenderConfig = {}): void {
   const filters = getRegisteredFilters();
   filters.forEach(filter => {
-    render(filter.id,attrs);
+    render(filter.id, config);
   });
 }
 /**

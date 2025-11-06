@@ -258,7 +258,51 @@ updateFilterConfig('my-filter', 'blur', 'stdDeviation', '10,10')
 updateFilterDom('my-filter', 'blur', 'stdDeviation', '10,10')
 ```
 
-#### 5. 配合 GSAP 实现动画
+#### 5. 自定义滤镜区域（解决效果被裁剪问题）
+
+```typescript
+import { render } from '@svg-filter-factory/core'
+
+// 默认使用（适合大多数场景）
+render('my-filter')  // 自动应用 x: '-50%', y: '-50%', width: '200%', height: '200%'
+
+// 自定义滤镜区域（用于超大模糊、发光等效果）
+render('large-blur', {
+  filterRegion: {
+    x: '-100%',
+    y: '-100%',
+    width: '300%',
+    height: '300%'
+  }
+})
+
+// 同时自定义 SVG 容器和滤镜区域
+render('custom-filter', {
+  container: {
+    width: '800',
+    height: '600',
+    viewBox: '0 0 800 600'
+  },
+  filterRegion: {
+    filterUnits: 'userSpaceOnUse',  // 使用绝对坐标
+    x: '-50',
+    y: '-50',
+    width: '300',
+    height: '300'
+  }
+})
+```
+
+**常见问题：滤镜效果消失或被裁剪？**
+
+原因：滤镜效果范围超出了渲染区域。解决方法：
+- 小模糊（< 5px）：默认即可
+- 大模糊（> 20px）：使用 `x: '-50%', width: '200%'`
+- 超大效果：使用 `x: '-100%', width: '300%'`
+
+详见 [warm-up.md](./warm-up.md) 的滤镜区域设置章节。
+
+#### 6. 配合 GSAP 实现动画
 
 ```typescript
 import { updateFilterConfig } from '@svg-filter-factory/core'
@@ -392,8 +436,29 @@ pnpm clean
 | 方法 | 说明 | 参数 |
 |------|------|------|
 | `register()` | 注册过滤器 | `FilterDefinition \| FilterDefinition[]` |
-| `render()` | 渲染过滤器到 DOM | `string \| string[]` |
-| `renderAll()` | 渲染所有已注册的过滤器 | - |
+| `render()` | 渲染过滤器到 DOM | `filterId: string \| string[], config?: RenderConfig` |
+| `renderAll()` | 渲染所有已注册的过滤器 | `config?: RenderConfig` |
+
+**`RenderConfig` 接口：**
+
+```typescript
+interface RenderConfig {
+  // SVG 容器配置（可选）
+  container?: {
+    width?: string      // SVG 容器宽度
+    height?: string     // SVG 容器高度
+    viewBox?: string    // SVG viewBox
+  }
+  // 滤镜区域配置（可选）
+  filterRegion?: {
+    filterUnits?: 'objectBoundingBox' | 'userSpaceOnUse'
+    x?: string          // 滤镜区域 X 坐标（如 '-50%'）
+    y?: string          // 滤镜区域 Y 坐标（如 '-50%'）
+    width?: string      // 滤镜区域宽度（如 '200%'）
+    height?: string     // 滤镜区域高度（如 '200%'）
+  }
+}
+```
 
 ### 查询方法
 
@@ -420,11 +485,13 @@ pnpm clean
 ### 类型定义
 
 ```typescript
+// 过滤器定义
 interface FilterDefinition {
   id: string
   config: SubFilter[]
 }
 
+// 子过滤器
 interface SubFilter {
   type: FilterType
   props: Record<string, any>
@@ -432,6 +499,7 @@ interface SubFilter {
   result?: string
 }
 
+// 过滤器类型
 type FilterType = 
   | 'feGaussianBlur'
   | 'feDropShadow'
@@ -450,6 +518,28 @@ type FilterType =
   | 'feDiffuseLighting'
   | 'feTile'
   | 'feImage'
+
+// 渲染配置
+interface RenderConfig {
+  container?: SvgContainerOptions
+  filterRegion?: FilterRegionOptions
+}
+
+// SVG 容器选项
+interface SvgContainerOptions {
+  width?: string
+  height?: string
+  viewBox?: string
+}
+
+// 滤镜区域选项
+interface FilterRegionOptions {
+  filterUnits?: 'objectBoundingBox' | 'userSpaceOnUse'
+  x?: string
+  y?: string
+  width?: string
+  height?: string
+}
 ```
 
 ## 🎯 使用场景
