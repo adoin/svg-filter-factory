@@ -25,7 +25,7 @@
             <!-- 预览区域 -->
             <div class="flex gap-6">
               <!-- 左侧：动画预览 -->
-              <div class="flex-1 bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-8 flex items-center justify-center min-h-[300px]">
+              <div class="bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-8 flex items-center justify-center min-h-[300px]">
                 <div :id="`preview-${example.id}`" class="relative">
                   <div 
                     :id="`target-${example.id}`" 
@@ -36,7 +36,7 @@
               </div>
 
               <!-- 右侧：代码预览 -->
-              <div class="flex-1">
+              <div class="flex-1 w-0">
                 <div class="bg-gray-900 rounded-lg overflow-hidden">
                   <div class="bg-gray-800 px-4 py-2 text-white text-sm font-semibold">JavaScript + GSAP</div>
                   <pre class="p-4 overflow-x-auto text-sm"><code class="text-white" v-html="highlightCode(example.code)"></code></pre>
