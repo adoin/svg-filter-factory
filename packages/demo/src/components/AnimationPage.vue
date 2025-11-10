@@ -313,8 +313,8 @@ const glowPulseExample = {
   filter: {
     id: 'filter-glow-pulse',
     config: [
-      { type: 'feMorphology', props: { operator: 'dilate', radius: '0,0' }, in: 'SourceAlpha', result: 'dilated' },
-      { type: 'feGaussianBlur', props: { stdDeviation: '4,4' }, in: 'dilated', result: 'blurred' },
+      { type: 'feMorphology', props: { in: 'SourceAlpha', operator: 'dilate', radius: '0,0' }, result: 'dilated' },
+      { type: 'feGaussianBlur', props: { in: 'dilated', stdDeviation: '4,4' }, result: 'blurred' },
       { type: 'feFlood', props: { floodColor: '#00ffff', floodOpacity: 0 }, result: 'color' },
       { type: 'feComposite', props: { operator: 'in', in: 'color', in2: 'blurred' }, result: 'glow' },
       { type: 'feMerge', props: { inputs: ['glow', 'SourceGraphic'] } }
@@ -324,8 +324,8 @@ const glowPulseExample = {
 register({
   id: 'filter-glow-pulse',
   config: [
-    { type: 'feMorphology', props: { operator: 'dilate', radius: '0,0' }, in: 'SourceAlpha', result: 'dilated' },
-    { type: 'feGaussianBlur', props: { stdDeviation: '4,4' }, in: 'dilated', result: 'blurred' },
+    { type: 'feMorphology', props: { in: 'SourceAlpha', operator: 'dilate', radius: '0,0' }, result: 'dilated' },
+    { type: 'feGaussianBlur', props: { in: 'dilated', stdDeviation: '4,4' }, result: 'blurred' },
     { type: 'feFlood', props: { floodColor: '#00ffff', floodOpacity: 0 }, result: 'color' },
     { type: 'feComposite', props: { operator: 'in', in: 'color', in2: 'blurred' }, result: 'glow' },
     { type: 'feMerge', props: { inputs: ['glow', 'SourceGraphic'] } }

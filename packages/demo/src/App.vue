@@ -105,7 +105,7 @@
                       <span class="font-semibold text-gray-600">{{ idx + 1 }}.</span>
                       <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">{{ sub.type }}</span>
                       <span v-if="sub.result" class="text-green-600 text-xs">→ {{ sub.result }}</span>
-                      <span v-if="sub.in" class="text-gray-500 text-xs">(in: {{ sub.in }})</span>
+                      <span v-if="sub.props?.in" class="text-gray-500 text-xs">(in: {{ sub.props?.in }})</span>
                     </div>
                   </div>
                   <div class="flex gap-2">
@@ -424,7 +424,7 @@ const registerSampleFilters = () => {
       {
         id: 'sample-glow',
         config: [
-          { type: 'feGaussianBlur', props: { stdDeviation: '3,3' }, in: 'SourceAlpha', result: 'blur' },
+          { type: 'feGaussianBlur', props: { in: 'SourceAlpha', stdDeviation: '3,3' }, result: 'blur' },
           { type: 'feFlood', props: { floodColor: '#00ff00', floodOpacity: 0.8 }, result: 'color' },
           { type: 'feComposite', props: { operator: 'in', in: 'color', in2: 'blur' }, result: 'glow' },
           { type: 'feMerge', props: { inputs: ['glow', 'SourceGraphic'] } }
@@ -434,7 +434,7 @@ const registerSampleFilters = () => {
         id: 'sample-complex',
         config: [
           { type: 'feGaussianBlur', props: { stdDeviation: '2,2' }, result: 'blur' },
-          { type: 'feColorMatrix', props: { type: 'hueRotate', values: '90' }, in: 'blur' }
+          { type: 'feColorMatrix', props: { in: 'blur', type: 'hueRotate', values: '90' } }
         ]
       },
       {
@@ -537,20 +537,21 @@ const getDefaultSubFilter = (type: string = 'feGaussianBlur') => {
     feColorMatrix: { props: { in: 'SourceGraphic', type: 'saturate', values: '1' }, result: 'colormatrix' },
     feComponentTransfer: { 
       props: { 
+        in: 'SourceGraphic',
         funcR: { type: 'identity' },
         funcG: { type: 'identity' },
         funcB: { type: 'identity' },
         funcA: { type: 'identity' }
       }, 
-      result: 'transfer' 
+      result: 'transfer'
     },
     feTurbulence: { props: { type: 'fractalNoise', baseFrequency: '0.05,0.05', numOctaves: 1, seed: 0, stitchTiles: 'noStitch' }, result: 'turbulence' },
-    feBlend: { props: { mode: 'normal', in: 'SourceGraphic', in2: 'SourceAlpha' }, result: 'blend' },
-    feComposite: { props: { operator: 'over', in: 'SourceGraphic', in2: 'SourceAlpha' }, result: 'composite' },
+    feBlend: { props: { in: 'SourceGraphic', mode: 'normal', in2: 'SourceAlpha' }, result: 'blend' },
+    feComposite: { props: { in: 'SourceGraphic', operator: 'over', in2: 'SourceAlpha' }, result: 'composite' },
     feMerge: { props: { inputs: ['SourceGraphic'] }, result: 'merge' },
     feMorphology: { props: { in: 'SourceGraphic', operator: 'erode', radius: '0,0' }, result: 'morphology' },
     feConvolveMatrix: { props: { in: 'SourceGraphic', order: '3,3', kernelMatrix: '0 -1 0 -1 5 -1 0 -1 0', bias: 0, edgeMode: 'duplicate' }, result: 'convolve' },
-    feDisplacementMap: { props: { scale: 50, xChannelSelector: 'R', yChannelSelector: 'G', in: 'SourceGraphic', in2: 'SourceGraphic' }, result: 'displace' },
+    feDisplacementMap: { props: { in: 'SourceGraphic', scale: 50, xChannelSelector: 'R', yChannelSelector: 'G', in2: 'SourceGraphic' }, result: 'displace' },
     feSpecularLighting: { props: { in: 'SourceGraphic', lightType: 'distant', azimuth: 45, elevation: 30, surfaceScale: 1, specularConstant: 1, specularExponent: 20, lightingColor: '#ffffff' }, result: 'specular' },
     feDiffuseLighting: { props: { in: 'SourceGraphic', lightType: 'distant', azimuth: 45, elevation: 30, surfaceScale: 1, diffuseConstant: 1, lightingColor: '#ffffff' }, result: 'diffuse' },
     feTile: { props: { in: 'SourceGraphic' }, result: 'tile' },
@@ -560,8 +561,7 @@ const getDefaultSubFilter = (type: string = 'feGaussianBlur') => {
   const config = defaults[type] || { props: {}, result: 'effect' }
   return {
     type,
-    props: config.props,
-    in: 'SourceGraphic',
+    props: config.props,  // in 现在在 props 内
     result: config.result
   }
 }
@@ -599,8 +599,7 @@ const createFilter = () => {
   try {
     const config = newSubFilters.value.map((sf: Partial<SubFilter>) => ({
       type: sf.type!,
-      props: sf.props || {},
-      in: sf.in || undefined,
+      props: sf.props || {},  // in 现在在 props 内
       result: sf.result || undefined
     }))
     
@@ -641,8 +640,7 @@ const copyFilterToBuilder = (filter: FilterDefinition) => {
     // 深拷贝配置到创建区域
     newSubFilters.value = filter.config.map(sub => ({
       type: sub.type,
-      props: { ...sub.props },
-      in: sub.in,
+      props: { ...sub.props },  // in 已经在 props 内
       result: sub.result
     })) as Partial<SubFilter>[]
     
@@ -726,9 +724,7 @@ const previewCode = computed(() => {
       parts.push(`props: ${propsStr}`)
     }
     
-    if (sf.in) {
-      parts.push(`in: '${sf.in}'`)
-    }
+    // in 现在在 props 内,不再单独输出
     
     if (sf.result) {
       parts.push(`result: '${sf.result}'`)
@@ -801,7 +797,7 @@ const previewFilterSvg = computed(() => {
     if (!sf.type) return ''
     
     const props = sf.props as any || {}
-    const defaultIn = sf.in || 'SourceGraphic'
+    const defaultIn = props.in || 'SourceGraphic'  // in 现在在 props 内
     const result = sf.result ? ` result="${sf.result}"` : ''
     
     // 简化的 SVG 生成逻辑
@@ -1011,12 +1007,19 @@ const convertJsonToFormData = (jsonData: any): { id: string; config: Partial<Sub
 const convertSubFilter = (sub: any): Partial<SubFilter> => {
   const converted: Partial<SubFilter> = {
     type: sub.type,
-    result: sub.result,
-    in: sub.in,
     props: {}
   }
   
+  // 只在存在时才添加 result
+  if (sub.result !== undefined) {
+    converted.result = sub.result
+  }
+  
   if (!sub.props) {
+    // 如果没有 props,检查是否有顶层的 in 需要移到 props 内
+    if (sub.in !== undefined) {
+      converted.props = { in: sub.in }
+    }
     return converted
   }
   
@@ -1025,6 +1028,11 @@ const convertSubFilter = (sub: any): Partial<SubFilter> => {
   
   // 特殊处理：将二维值字符串转换为表单需要的格式
   const props = converted.props as any
+  
+  // 兼容旧格式: 如果 in 在顶层而不在 props 中,移到 props 内
+  if (sub.in !== undefined && props.in === undefined) {
+    props.in = sub.in
+  }
   
   // stdDeviation: "5,5" 需要保持字符串格式（已正确）
   // baseFrequency: "0.05,0.05" 需要保持字符串格式（已正确）

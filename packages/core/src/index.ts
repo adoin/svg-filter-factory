@@ -29,11 +29,13 @@ export type FilterType =
 
 // Filter configuration interfaces for each type
 export interface GaussianBlurProps {
+  in?: string;  // 输入源
   stdDeviation?: number | string;  // 支持 "2,2" 格式
   edgeMode?: 'duplicate' | 'wrap' | 'none';
 }
 
 export interface DropShadowProps {
+  in?: string;  // 输入源
   dx?: number;
   dy?: number;
   stdDeviation?: number | string;  // 支持单个值或 "x,y" 格式
@@ -42,11 +44,13 @@ export interface DropShadowProps {
 }
 
 export interface MorphologyProps {
+  in?: string;  // 输入源
   operator?: 'erode' | 'dilate';
   radius?: number | string;  // 支持单个值或 "x,y" 格式
 }
 
 export interface DisplacementMapProps {
+  in?: string;  // 输入源
   scale?: number;
   xChannelSelector?: 'R' | 'G' | 'B' | 'A';
   yChannelSelector?: 'R' | 'G' | 'B' | 'A';
@@ -60,11 +64,13 @@ export interface BlendProps {
 }
 
 export interface ColorMatrixProps {
+  in?: string;  // 输入源
   type?: 'matrix' | 'saturate' | 'hueRotate' | 'luminanceToAlpha';
   values?: string;
 }
 
 export interface ConvolveMatrixProps {
+  in?: string;  // 输入源
   order?: number | string;
   kernelMatrix?: string;
   bias?: number;
@@ -85,6 +91,7 @@ export interface ComponentTransferFuncProps {
 }
 
 export interface ComponentTransferProps {
+  in?: string;  // 输入源
   funcR?: ComponentTransferFuncProps;
   funcG?: ComponentTransferFuncProps;
   funcB?: ComponentTransferFuncProps;
@@ -92,6 +99,7 @@ export interface ComponentTransferProps {
 }
 
 export interface SpecularLightingProps {
+  in?: string;  // 输入源
   surfaceScale?: number;
   specularConstant?: number;
   specularExponent?: number;
@@ -108,6 +116,7 @@ export interface SpecularLightingProps {
 }
 
 export interface DiffuseLightingProps {
+  in?: string;  // 输入源
   surfaceScale?: number;
   diffuseConstant?: number;
   lightingColor?: string;
@@ -123,11 +132,13 @@ export interface DiffuseLightingProps {
 }
 
 export interface FloodProps {
+  in?: string;  // 输入源(可选,Flood通常不需要但为了类型统一添加)
   floodColor?: string;
   floodOpacity?: number;
 }
 
 export interface TurbulenceProps {
+  in?: string;  // 输入源(可选,Turbulence通常不需要但为了类型统一添加)
   type?: 'fractalNoise' | 'turbulence';
   baseFrequency?: number | string; // 支持单个数字或 "x,y" 格式
   numOctaves?: number;
@@ -136,12 +147,14 @@ export interface TurbulenceProps {
 }
 
 export interface ImageProps {
+  in?: string;  // 输入源(可选,Image通常不需要但为了类型统一添加)
   href?: string;
   align?: 'none' | 'xMinYMin' | 'xMidYMin' | 'xMaxYMin' | 'xMinYMid' | 'xMidYMid' | 'xMaxYMid' | 'xMinYMax' | 'xMidYMax' | 'xMaxYMax';
   meetOrSlice?: 'meet' | 'slice';
 }
 
 export interface OffsetProps {
+  in?: string;  // 输入源
   dx?: number;
   dy?: number;
 }
@@ -157,6 +170,7 @@ export interface CompositeProps {
 }
 
 export interface MergeProps {
+  in?: string;  // 输入源(可选,Merge通常使用inputs但为了类型统一添加)
   inputs?: string[];
 }
 
@@ -187,9 +201,8 @@ export type FilterProps =
 // 单个子过滤器配置
 export interface SubFilter {
   type: FilterType;
-  props?: FilterProps;
-  result?: string;  // 可选的输出结果名称，用于在其他过滤器中引用
-  in?: string;      // 可选的输入源
+  props?: FilterProps;  // 所有属性参数都在 props 内,包括 in, in2 等
+  result?: string;      // 可选的输出结果名称，用于在其他过滤器中引用
 }
 
 // 完整的过滤器定义
@@ -231,7 +244,9 @@ function removeFilterConfig(filterId: string): void {
 
 // Generate single sub-filter element
 function generateSubFilterElement(subFilter: SubFilter): string {
-  const { type, props = {}, result, in: inputSource } = subFilter;
+  const { type, props = {}, result } = subFilter;
+  const propsAny = props as any;
+  const inputSource = propsAny.in;  // in 现在在 props 内
   
   // Common attributes
   const commonAttrs: string[] = [];

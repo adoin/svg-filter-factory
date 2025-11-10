@@ -358,7 +358,7 @@
       
       <el-row :gutter="10">
         <el-col :span="24">
-          <el-form-item label="输入源 1">
+          <el-form-item label="输入源 1 (in)">
             <el-select 
               v-model="localProps.in" 
               @change="emitUpdate"
@@ -367,7 +367,7 @@
           </el-form-item>
         </el-col>
         <el-col :span="24">
-          <el-form-item label="输入源 2">
+          <el-form-item label="输入源 2 (in2)">
             <el-select 
               v-model="localProps.in2" 
               @change="emitUpdate"
@@ -394,7 +394,7 @@
       
       <el-row :gutter="10">
         <el-col :span="24">
-          <el-form-item label="输入源 1">
+          <el-form-item label="输入源 1 (in)">
             <el-select 
               v-model="localProps.in" 
               @change="emitUpdate"
@@ -403,7 +403,7 @@
           </el-form-item>
         </el-col>
         <el-col :span="24">
-          <el-form-item label="输入源 2">
+          <el-form-item label="输入源 2 (in2)">
             <el-select 
               v-model="localProps.in2" 
               @change="emitUpdate"
